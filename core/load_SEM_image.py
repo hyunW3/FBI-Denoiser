@@ -1,5 +1,6 @@
 import os
 import cv2
+import numpy as np
 data_path = "data/Samsung_SNU"
 num_per_Ffolder = 16
 def load_set_images(set_path : str) -> dict:
@@ -29,11 +30,15 @@ def load_whole_image(path : str) -> dict:
         set_path = os.path.join(path,set_number)
         whole_images[set_number] = load_set_images(set_path)
     return whole_images
+def crop_image(image : np.array,size : int):
+    return image[:size,:size]
 def load_single_image(set_num : int, f_num : int, num : int):
     flag1 = set_num <0 or set_num >4
     flag2 = f_num not in [8,16,32,64]
     flag3 = num not in range(1,num_per_Ffolder+1)
     if flag1 or flag2 or flag3:
         print(f"True means Undesirable arugment\n1st : {flag1}, 2nd : {flag2}, 3rd : {flag3}")
-        raise                                                                   
-    return cv2.imread(f"data/Samsung_SNU/[SET {set_num}]/F{f_num}/{num}_F{f_num}.png",cv2.IMREAD_GRAYSCALE)
+        raise    
+    image = cv2.imread(f"data/Samsung_SNU/[SET {set_num}]/F{f_num}/{num}_F{f_num}.png",cv2.IMREAD_GRAYSCALE)                                                               
+    image = crop_image(image,256)
+    return image

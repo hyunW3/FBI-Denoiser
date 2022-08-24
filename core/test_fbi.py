@@ -102,7 +102,8 @@ class Test_FBI(object):
                 ssim_arr.append(get_SSIM(X[0], X_hat[0]))
                 time_arr.append(inference_time)
                 denoised_img_arr.append(X_hat[0].reshape(X_hat.shape[2],X_hat.shape[3]))
-
+                print(f"image : {batch_idx:02d} ->\t psnr : {round(float(get_PSNR(X[0], X_hat[0])),4)}, ssim : {round(float(get_SSIM(X[0], X_hat[0])),6)} ")
+       
         mean_psnr = np.mean(psnr_arr)
         mean_ssim = np.mean(ssim_arr)
         mean_time = np.mean(time_arr)
