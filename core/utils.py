@@ -28,7 +28,7 @@ class SEMdataLoader():
         #self.data = 
         # self.data = h5py.File(self.tr_data_dir, "r")
 
-        self.noisy_arr = np.array([load_single_image(1,8,i) for i in range(1,num_per_Ffolder)])
+        self.noisy_arr = np.array([load_single_image(1,_args.f_num,i) for i in range(1,num_per_Ffolder)])
         self.clean_arr = np.array([load_single_image(1,64,i) for i in range(1,num_per_Ffolder)])
         
         self.num_data = self.clean_arr.shape[0]

@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 import scipy.io as sio
 
-from .utils import TedataLoader, get_PSNR, get_SSIM, inverse_gat, gat, normalize_after_gat_torch
+from .utils import TedataLoader, SEMdataLoader, get_PSNR, get_SSIM, inverse_gat, gat, normalize_after_gat_torch
 from .models import New_model
 from .unet import est_UNet
 
@@ -17,7 +17,10 @@ class Test_FBI(object):
         
         self.args = _args
         
-        self.te_data_loader = TedataLoader(_te_data_dir, self.args)
+        if "Samsung" in _te_data_dir :
+            self.te_data_loader = SEMdataLoader(_args=self.args)
+        else :
+            self.te_data_loader = TedataLoader(_te_data_dir, self.args)
         self.te_data_loader = DataLoader(self.te_data_loader, batch_size=1, shuffle=False, num_workers=0, drop_last=False)
 
         self.result_psnr_arr = []
@@ -28,8 +31,9 @@ class Test_FBI(object):
         self.save_file_name = _save_file_name
 
         num_output_channel = 2
-            
+        
         self.model = New_model(channel = 1, output_channel =  num_output_channel, filters = self.args.num_filters, num_of_layers=self.args.num_layers, case = self.args.model_type, output_type = self.args.output_type, sigmoid_value = self.args.sigmoid_value)
+        
         self.model.load_state_dict(torch.load(_fbi_weight_dir))
         self.model.cuda()
             
