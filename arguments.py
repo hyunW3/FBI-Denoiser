@@ -61,7 +61,8 @@ def get_args():
     
     parser.add_argument('--output-type', default='sigmoid', type=str, help='(default=%(default)f)')
     parser.add_argument('--sigmoid-value', default=0.1, type=float, help='(default=%(default)f)')
-    
+    parser.add_argument('--f-num', default=8, type=int, help='For samsung SEM image, need f-number 8,16,32,64',
+                        choices=[8,16,32,64])
     
     args=parser.parse_args()
     return args
