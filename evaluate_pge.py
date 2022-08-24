@@ -69,7 +69,12 @@ if __name__ == '__main__':
             pge_weight_dir = './weights/PGE_Net_TP_MICE.w'
             
             save_file_name = str(args.date)+ '_'+str(args.model_type)+'_' + str(args.data_type) +'_'+ str(args.data_name)
+        else : # for samsung SEM image
+            te_data_dir = './data/Samsung_SNU'
+            pge_weight_dir = './weights/PGE_Net_TP_MICE.w'
             
+            save_file_name = str(args.date)+ '_'+str(args.model_type)+'_' + str(args.data_type) +'_'+ str(args.data_name)
+
             
         print ('te data dir : ', te_data_dir)
         print ('pge weight dir : ', pge_weight_dir)

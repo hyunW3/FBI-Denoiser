@@ -37,7 +37,8 @@ def get_args():
                                  'DND',
                                  'CF_FISH',
                                  'CF_MICE',
-                                 'TP_MICE'],
+                                 'TP_MICE',
+                                 'Samsung'],
                         help='(default=%(default)s)')
     
     parser.add_argument('--nepochs', default=50, type=int, required=False, help='(default=%(default)d)')

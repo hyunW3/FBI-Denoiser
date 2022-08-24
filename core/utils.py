@@ -13,11 +13,61 @@ import h5py
 import random
 import torch
 from torch.autograd import Variable
-
+from .load_SEM_image import *
 import math
 from skimage import measure
 from sklearn.metrics import mean_squared_error
 from sklearn.feature_extraction import image
+
+class SEMdataLoader():
+    def __init__(self, _tr_data_dir=None, _args = None):
+
+        self.tr_data_dir = _tr_data_dir
+        self.args = _args
+        
+        #self.data = 
+        # self.data = h5py.File(self.tr_data_dir, "r")
+
+        self.noisy_arr = np.array([load_single_image(1,8,i) for i in range(1,num_per_Ffolder)])
+        self.clean_arr = np.array([load_single_image(1,64,i) for i in range(1,num_per_Ffolder)])
+        
+        self.num_data = self.clean_arr.shape[0]
+            
+        print ('num of training patches : ', self.num_data)
+
+    def __len__(self):
+        return self.num_data
+    
+    def __getitem__(self, index):
+        """Retrieves image from folder and corrupts it."""
+        """
+        source = self.data["noisy_images"][index,:,:]
+        target = self.data["clean_images"][index,:,:]
+        """
+        source = self.noisy_arr[index]
+        target = self.clean_arr[index]
+        
+
+        source = torch.from_numpy(source.reshape(1,source.shape[0],source.shape[1])).float().cuda()
+        target = torch.from_numpy(target.reshape(1,target.shape[0],target.shape[1])).float().cuda()
+        
+        if self.args.loss_function == 'MSE_Affine' or self.args.loss_function == 'N2V':
+            target = torch.cat([source,target], dim = 0)
+
+        return source, target
+    
+def get_PSNR(X, X_hat):
+
+    mse = np.mean((X-X_hat)**2)
+    test_PSNR = 10 * math.log10(1/mse)
+    
+    return test_PSNR
+
+def get_SSIM(X, X_hat):
+
+    test_SSIM = measure.compare_ssim(np.transpose(X, (1,2,0)), np.transpose(X_hat, (1,2,0)), data_range=X.max() - X.min(), multichannel=True)
+
+    return test_SSIM
 
 class TrdataLoader():
 
