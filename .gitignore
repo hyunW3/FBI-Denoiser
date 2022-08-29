@@ -18,3 +18,8 @@ data/train_fivek_rawRGB_25000x256x256_cropped_alpha_0.01_beta_0.0002.hdf5
 data/train_fivek_rawRGB_25000x256x256_cropped_alpha_0.05_beta_0.02.hdf5 
 data/train_fivek_rawRGB_25002x256x256_cropped_random_noise.hdf5 
 data/Samsung_SNU
+
+*.hdf5
+*.pyc
+*.ipynb_checkpoints/
+
