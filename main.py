@@ -21,21 +21,25 @@ if __name__ == '__main__':
     """Trains Noise2Noise."""
     
     if args.noise_type == 'Poisson-Gaussian':
-        
-        if args.data_type == 'RawRGB' and args.data_name == 'fivek' and args.alpha == 0 and args.beta == 0:
+        if args.data_name == 'fivek': 
+            if args.data_type == 'RawRGB' and args.alpha == 0 and args.beta == 0:
+                tr_data_dir = './data/train_fivek_rawRGB_25000x256x256_cropped_random_noise.hdf5'
+                te_data_dir = './data/test_fivek_rawRGB_random_noise.hdf5'
             
-            tr_data_dir = './data/train_fivek_rawRGB_25000x256x256_cropped_random_noise.hdf5'
-            te_data_dir = './data/test_fivek_rawRGB_random_noise.hdf5'
+                save_file_name = str(args.date)+ '_'+str(args.model_type)+'_' + str(args.data_type) +'_' + 'random_noise'
             
-            save_file_name = str(args.date)+ '_'+str(args.model_type)+'_' + str(args.data_type) +'_' + 'random_noise'
-        
-        else:
+            else:
+                tr_data_dir = './data/train_fivek_rawRGB_25000x256x256_cropped_alpha_'+str(args.alpha)+'_beta_'+str(args.beta)+'.hdf5'
+                te_data_dir = './data/test_fivek_rawRGB_alpha_'+str(args.alpha)+'_beta_'+str(args.beta)+'.hdf5'
             
-            tr_data_dir = './data/train_fivek_rawRGB_25000x256x256_cropped_alpha_'+str(args.alpha)+'_beta_'+str(args.beta)+'.hdf5'
-            te_data_dir = './data/test_fivek_rawRGB_alpha_'+str(args.alpha)+'_beta_'+str(args.beta)+'.hdf5'
+                save_file_name = str(args.date)+ '_'+str(args.model_type)+'_' + str(args.data_type) +'_'+ str(args.data_name)+ '_alpha_' + str(args.alpha) + '_beta_' + str(args.beta)
+        else : #Samsung SEM image
+            tr_data_dir = f'./data/train_Samsung_SNU_patches_SET{args.set_num}.hdf5'
+            te_data_dir = f'./data/test_Samsung_SNU_patches_SET{args.set_num}.hdf5'
             
-            save_file_name = str(args.date)+ '_'+str(args.model_type)+'_' + str(args.data_type) +'_'+ str(args.data_name)+ '_alpha_' + str(args.alpha) + '_beta_' + str(args.beta)
-            
+            save_file_name = str(args.date)+ '_'+str(args.model_type)+'_' + str(args.data_type) +'_'+ str(args.data_name) 
+
+
 
         print ('tr data dir : ', tr_data_dir)
         print ('te data dir : ', te_data_dir)
