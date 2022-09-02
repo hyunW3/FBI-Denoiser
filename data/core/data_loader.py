@@ -42,7 +42,18 @@ def sem_generator(data_path : str):
         set_num = set_num[:3] + set_num[-1]
         for f_num in sorted(os.listdir(set_path)):
             f_path = os.path.join(set_path,f_num)
-            avg_info = {"lowest_size" : -1, "mean_size" : 0, "cnt" : 0, "highest_size" : -1}
             for file_name in sorted(os.listdir(f_path)):
                 file_path = os.path.join(f_path,file_name)
                 yield [set_num,f_num,file_name.split("_")[0],cv2.imread(file_path,cv2.IMREAD_GRAYSCALE)]
+
+                
+def patch_generator(data_path : str):
+    for set_num in sorted(os.listdir(data_path)):
+        set_path = os.path.join(data_path,set_num)
+        cnt = 0
+        #set_num = set_num[1:-1]
+        #set_num = set_num[:3] + set_num[-1]
+        for file_name in sorted(os.listdir(set_path)):
+            f_num, file_num  = file_name.split("_")
+            file_path = os.path.join(set_path,file_name)
+            yield [set_num,f_num,file_num,cv2.imread(file_path,cv2.IMREAD_GRAYSCALE)]
