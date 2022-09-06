@@ -46,21 +46,24 @@ class Residual_module(nn.Module):
     def __init__(self, in_ch, mul = 1):
         super(Residual_module, self).__init__()
         
-        self.activation1 = nn.PReLU(in_ch*mul,0).cuda()
+        self.activation1 = nn.PReLU(in_ch*mul,0).cuda() # in_ch*mul : 64
         self.activation2 = nn.PReLU(in_ch,0).cuda()
-            
         self.conv1_1by1 = nn.Conv2d(in_channels=in_ch, out_channels=in_ch*mul, kernel_size = 1)
         self.conv2_1by1 = nn.Conv2d(in_channels=in_ch*mul, out_channels=in_ch, kernel_size = 1)
 
     def forward(self, input):
 
         output_residual = self.conv1_1by1(input)
+        # samsung sem image has 3 dimension(basically 4 dimension)
+        #  #might be it is grayscale image...?
+        if len(output_residual.shape) < 4:
+            output_residual = output_residual.unsqueeze(axis=0)
+        # print("before activation1 : ",output_residual.shape,self.activation1.weight.shape)
         output_residual = self.activation1(output_residual)
         output_residual = self.conv2_1by1(output_residual)
         
         output = (input + output_residual) / 2.
         output = self.activation2(output)
-        
         return output
     
 class Gaussian(nn.Module):
@@ -212,6 +215,10 @@ class New2_layer(nn.Module):
         else:
 
             output_new2 = self.new2(output_new)
+            #print(output_new2.shape, self.activation_new1.weight.shape)
+
+            if len(output_new2.shape) < 4:
+                output_new2 = output_new2.unsqueeze(axis=0)
             output_new2 = self.activation_new1(output_new2)
 
             output = (output_new2 + x) / 2.
