@@ -65,6 +65,7 @@ def get_args():
                         choices=[8,16,32,64])
     parser.add_argument('--set-num', default=1, type=int, help='For samsung SEM image, need f-number 8,16,32,64',
                         choices=[1,2,3,4])
+    parser.add_argument('--test', action='store_true', help='For samsung SEM image, train dataset to be test dataset(small size)')
     args=parser.parse_args()
     return args
 
