@@ -1,5 +1,7 @@
+import os
 import torch
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 
 import numpy as np
 import scipy.io as sio
@@ -40,6 +42,8 @@ class Train_FBI(object):
         self.save_file_name = _save_file_name
 
         self.logger = Logger(self.args.nepochs, len(self.tr_data_loader))
+        os.makedirs("./samsung_log",exist_ok=True)
+        self.writer = SummaryWriter("./samsung_log")
         
         if self.args.loss_function== 'MSE':
             self.loss = torch.nn.MSELoss()
@@ -176,14 +180,14 @@ class Train_FBI(object):
                     max_t=max_t.cpu().numpy()
                     X_hat =X_hat*(max_t-min_t)+min_t
                     X_hat=np.clip(inverse_gat(X_hat,original_sigma,original_alpha,0,method='closed_form'), 0, 1)
-#                     print (X_hat.shape)
-#                     print (X.shape)
+                #    print (X_hat.shape)
+                #    print (X.shape)
 
                 inference_time = time.time()-start
                 
                 loss_arr.append(loss)
                 psnr_arr.append(get_PSNR(X[0], X_hat[0]))
-                ssim_arr.append(get_SSIM(X[0], X_hat[0]))
+                ssim_arr.append(get_SSIM(X[0], X_hat[0],self.args.data_type))
                 time_arr.append(inference_time)
                 denoised_img_arr.append(X_hat[0].reshape(X_hat.shape[2],X_hat.shape[3]))
 
@@ -215,7 +219,16 @@ class Train_FBI(object):
 #         sio.savemat('./result_data/'+self.save_file_name + '_result',{'tr_loss_arr':self.result_tr_loss_arr, 'te_loss_arr':self.result_te_loss_arr,'psnr_arr':self.result_psnr_arr, 'ssim_arr':self.result_ssim_arr})
 
         print ('Epoch : ', epoch, ' Tr loss : ', round(mean_tr_loss,4), ' Te loss : ', round(mean_te_loss,4), ' PSNR : ', round(mean_psnr,2), ' SSIM : ', round(mean_ssim,4),' Best PSNR : ', round(self.best_psnr,4)) 
-            
+        prefix = ""
+        if "Samsung" in self.args.data_name:
+            prefix = f"{self.args.data_name}_SET{self.args.set_num}_"
+        else :
+            prefix = f"{self.args.data_name}_"
+
+        self.writer.add_scalar(f"{prefix}Tr loss",round(mean_tr_loss,4),epoch)
+        self.writer.add_scalar(f"{prefix}Te loss",round(mean_te_loss,4),epoch)
+        self.writer.add_scalar(f"{prefix}SSIM",round(mean_ssim,4),epoch)
+        self.writer.add_scalar(f"{prefix}Best PSNR",round(self.best_psnr,4),epoch)
   
     def train(self):
         """Trains denoiser on training set."""
@@ -269,7 +282,7 @@ class Train_FBI(object):
                 self.save_model()
                 
             self.scheduler.step()
-
+        self.writer.close()
 
 
 

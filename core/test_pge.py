@@ -62,7 +62,7 @@ class Test_PGE(object):
                 alpha_arr.append(original_alpha)
                 beta_arr.append(original_beta)
                 time_arr.append(inference_time)
-                # print(f"image : {batch_idx:02d} ->\t alpha : {round(float(original_alpha),4)}, beta_arr : {round(float(original_beta),6)} ")
+                print(f"image : {batch_idx:02d} ->\t alpha : {round(float(original_alpha),4)}, beta_arr : {round(float(original_beta),6)} ")
         mean_alpha = np.mean(alpha_arr)
         mean_beta = np.mean(beta_arr)
         mean_time = np.mean(time_arr)

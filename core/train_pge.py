@@ -12,6 +12,7 @@ import torchvision as vision
 import sys
 from .unet import est_UNet  
 import time
+import sys
 
 class Train_PGE(object):
     def __init__(self,_tr_data_dir=None, _te_data_dir=None, _save_file_name = None, _args = None):
@@ -102,11 +103,12 @@ class Train_PGE(object):
                 
                 predict_alpha=torch.mean(noise_hat[:,0])
                 predict_sigma=torch.mean(noise_hat[:,1])
-                
+                #print(torch.unique(source),"\n",torch.unique(target))
                 predict_gat=gat(source,predict_sigma,predict_alpha,0)     
 #                 predict_gat=gat(source,torch.tensor(0.02).to(torch.float32),torch.tensor(0.01).to(torch.float32),0)     
                 
                 loss=self._vst(predict_gat)
+                #print(predict_gat,"loss : ",loss)
                 loss.backward()
                 self.optim.step()  
 

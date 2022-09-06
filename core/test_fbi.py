@@ -16,11 +16,12 @@ class Test_FBI(object):
     def __init__(self,_te_data_dir=None,_pge_weight_dir=None,_fbi_weight_dir=None, _save_file_name = None, _args = None):
         
         self.args = _args
-        
+        """
         if "Samsung" in _te_data_dir :
             self.te_data_loader = SEMdataLoader(_args=self.args)
         else :
             self.te_data_loader = TedataLoader(_te_data_dir, self.args)
+        """
         self.te_data_loader = DataLoader(self.te_data_loader, batch_size=1, shuffle=False, num_workers=0, drop_last=False)
 
         self.result_psnr_arr = []
@@ -32,7 +33,9 @@ class Test_FBI(object):
 
         num_output_channel = 2
         
-        self.model = New_model(channel = 1, output_channel =  num_output_channel, filters = self.args.num_filters, num_of_layers=self.args.num_layers, case = self.args.model_type, output_type = self.args.output_type, sigmoid_value = self.args.sigmoid_value)
+        self.model = New_model(channel = 1, output_channel =  num_output_channel, filters = self.args.num_filters, 
+                                num_of_layers=self.args.num_layers, case = self.args.model_type, output_type = self.args.output_type, 
+                                sigmoid_value = self.args.sigmoid_value)
         
         self.model.load_state_dict(torch.load(_fbi_weight_dir))
         self.model.cuda()
@@ -99,7 +102,7 @@ class Test_FBI(object):
                 inference_time = time.time()-start
                 
                 psnr_arr.append(get_PSNR(X[0], X_hat[0]))
-                ssim_arr.append(get_SSIM(X[0], X_hat[0]))
+                ssim_arr.append(get_SSIM(X[0], X_hat[0],self.args.data_type))
                 time_arr.append(inference_time)
                 denoised_img_arr.append(X_hat[0].reshape(X_hat.shape[2],X_hat.shape[3]))
                 print(f"image : {batch_idx:02d} ->\t psnr : {round(float(get_PSNR(X[0], X_hat[0])),4)}, ssim : {round(float(get_SSIM(X[0], X_hat[0])),6)} ")
