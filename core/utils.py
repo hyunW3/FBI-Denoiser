@@ -15,7 +15,8 @@ import torch
 from torch.autograd import Variable
 from .load_SEM_image import *
 import math
-from skimage import measure
+#from skimage import measure # measure.compare_ssim is deprecated after 0.19
+from skimage.metrics import structural_similarity as compare_ssim
 from sklearn.metrics import mean_squared_error
 from sklearn.feature_extraction import image
 
@@ -28,8 +29,8 @@ class SEMdataLoader():
         #self.data = 
         # self.data = h5py.File(self.tr_data_dir, "r")
 
-        self.noisy_arr = np.array([load_single_image(1,_args.f_num,i) for i in range(1,num_per_Ffolder)])
-        self.clean_arr = np.array([load_single_image(1,64,i) for i in range(1,num_per_Ffolder)])
+        self.noisy_arr = np.array([load_single_image(1,_args.f_num,i)/255. for i in range(1,num_per_Ffolder)])
+        self.clean_arr = np.array([load_single_image(1,64,i)/255. for i in range(1,num_per_Ffolder)])
         
         self.num_data = self.clean_arr.shape[0]
             
@@ -63,9 +64,11 @@ def get_PSNR(X, X_hat):
     
     return test_PSNR
 
-def get_SSIM(X, X_hat):
-
-    test_SSIM = measure.compare_ssim(np.transpose(X, (1,2,0)), np.transpose(X_hat, (1,2,0)), data_range=X.max() - X.min(), multichannel=True)
+def get_SSIM(X, X_hat,data_type):
+    #print("get ssim : ",X.shape, X_hat.shape,data_type)
+    ch_axis = 0
+    #test_SSIM = measure.compare_ssim(np.transpose(X, (1,2,0)), np.transpose(X_hat, (1,2,0)), data_range=X.max() - X.min(), multichannel=multichannel)
+    test_SSIM = compare_ssim(X, X_hat, data_range=X.max() - X.min(), channel_axis=ch_axis)
 
     return test_SSIM
 
@@ -81,8 +84,10 @@ class TrdataLoader():
         self.noisy_arr = self.data["noisy_images"]
         self.clean_arr = self.data["clean_images"]
         
+        print("noisy_arr : ",self.noisy_arr.shape, f"pixel value range from {self.noisy_arr[-1].min()} ~ {self.noisy_arr[-1].max()}")
+        print("clean_arr : ",self.clean_arr.shape, f"pixel value range from {self.clean_arr[-1].min()} ~ {self.clean_arr[-1].max()}")
+
         self.num_data = self.clean_arr.shape[0]
-            
         print ('num of training patches : ', self.num_data)
 
     def __len__(self):
@@ -97,14 +102,20 @@ class TrdataLoader():
 
             clean_img = self.clean_arr[index,:,:]
             noisy_img = self.noisy_arr[index,:,:]
-
+            # to check valid array
+            #print(self.clean_arr[index,:,:].shape)
+            #print(index,np.unique(self.clean_arr[index]),np.unique(clean_img))
             if self.args.data_type == 'Grayscale':
                 
                 rand = random.randrange(1,10000)
-                
-                clean_patch = image.extract_patches_2d(image = clean_img ,patch_size = (self.args.crop_size, self.args.crop_size), 
+                clean_patch,noisy_patch = None,None
+                if clean_img.shape[0] <= self.args.crop_size and clean_img.shape[1] <= self.args.crop_size:
+                    clean_patch = clean_img
+                    noisy_patch = noisy_img
+                else :
+                    clean_patch = image.extract_patches_2d(image = clean_img ,patch_size = (self.args.crop_size, self.args.crop_size), 
                                              max_patches = 1, random_state = rand)
-                noisy_patch = image.extract_patches_2d(image = noisy_img ,patch_size = (self.args.crop_size, self.args.crop_size), 
+                    noisy_patch = image.extract_patches_2d(image = noisy_img ,patch_size = (self.args.crop_size, self.args.crop_size), 
                                              max_patches = 1, random_state = rand)
                 
                             # Random horizontal flipping
@@ -134,12 +145,12 @@ class TrdataLoader():
                 return source, target
             
             elif self.args.loss_function == 'MSE_Affine' or self.args.loss_function == 'N2V' or self.args.loss_function == 'Noise_est' or self.args.loss_function == 'EMSE_Affine':
-                
+                #print("===== at lossfunction =====\n",np.unique(noisy_patch[0]))
                 source = torch.from_numpy(noisy_patch.copy())
                 target = torch.from_numpy(clean_patch.copy())
                 
                 target = torch.cat([source,target], dim = 0)
-                
+                #print(torch.unique(source[0]))
                 return source, target
 
         else: ## real data
@@ -192,9 +203,13 @@ def get_PSNR(X, X_hat):
     
     return test_PSNR
 
-def get_SSIM(X, X_hat):
+def get_SSIM(X, X_hat,data_type):
 
-    test_SSIM = measure.compare_ssim(np.transpose(X, (1,2,0)), np.transpose(X_hat, (1,2,0)), data_range=X.max() - X.min(), multichannel=True)
+    #print("get ssim : ",X.shape, X_hat.shape,data_type)
+    
+    ch_axis = 0
+    #test_SSIM = measure.compare_ssim(np.transpose(X, (1,2,0)), np.transpose(X_hat, (1,2,0)), data_range=X.max() - X.min(), multichannel=multichannel)
+    test_SSIM = compare_ssim(X, X_hat, data_range=X.max() - X.min(), channel_axis=ch_axis)
 
     return test_SSIM
 
