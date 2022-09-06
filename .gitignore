@@ -22,4 +22,4 @@ data/Samsung_SNU*
 *.hdf5
 *.pyc
 *.ipynb_checkpoints/
-
+*.txt
