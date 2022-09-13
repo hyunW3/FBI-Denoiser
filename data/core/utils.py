@@ -48,3 +48,14 @@ def seed_everything(seed):
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+def get_dict_structure(target : dict):
+    print("=== dict structure ===")
+    sub_dict = target
+    while(True):
+        try :
+            for keys in sub_dict.keys():
+                print(keys, end=", ")
+            sub_dict = sub_dict[keys]
+            print("")
+        except : 
+            break
