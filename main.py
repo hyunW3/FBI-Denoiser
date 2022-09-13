@@ -19,7 +19,7 @@ if torch.cuda.is_available():
 
 if __name__ == '__main__':
     """Trains Noise2Noise."""
-    
+    save_file_name =""
     if args.noise_type == 'Poisson-Gaussian':
         if args.data_name == 'fivek': 
             if args.data_type == 'RawRGB' and args.alpha == 0 and args.beta == 0:
@@ -34,10 +34,15 @@ if __name__ == '__main__':
             
                 save_file_name = str(args.date)+ '_'+str(args.model_type)+'_' + str(args.data_type) +'_'+ str(args.data_name)+ '_alpha_' + str(args.alpha) + '_beta_' + str(args.beta)
         else : #Samsung SEM image
-            tr_data_dir = f'./data/train_Samsung_SNU_patches_SET{args.set_num}.hdf5'
-            te_data_dir = f'./data/test_Samsung_SNU_patches_SET{args.set_num}.hdf5'
+            tr_data_dir = ""
+            if args.test :
+                tr_data_dir = f'./data/val_Samsung_SNU_patches_SET{args.set_num}.hdf5'
+            else :
+                tr_data_dir = f'./data/train_Samsung_SNU_patches_SET{args.set_num}.hdf5'
+            te_data_dir = f'./data/val_Samsung_SNU_patches_SET{args.set_num}.hdf5'
             
-            save_file_name = str(args.date)+ '_'+str(args.model_type)+'_' + str(args.data_type) +'_'+ str(args.data_name) 
+            save_file_name = f"{args.date}_{args.model_type}_{args.data_type}_{args.data_name}_SET{args.set_num}"
+            #save_file_name = str(args.date)+ '_'+str(args.model_type)+'_' + str(args.data_type) +'_'+ str(args.data_name) 
 
 
 
@@ -54,10 +59,10 @@ if __name__ == '__main__':
         save_file_name += '_layers_x' + str(args.num_layers) + '_filters_x' + str(args.num_filters)+ '_cropsize_' + str(args.crop_size)
     
     print ('save_file_name : ', save_file_name)
-    
     # Initialize model and train
     if args.model_type != 'PGE_Net':
         train = Train_FBI(_tr_data_dir=tr_data_dir, _te_data_dir=te_data_dir, _save_file_name = save_file_name,  _args = args)
     else:
         train = Train_PGE(_tr_data_dir=tr_data_dir, _te_data_dir=te_data_dir, _save_file_name = save_file_name,  _args = args)
     train.train()
+    

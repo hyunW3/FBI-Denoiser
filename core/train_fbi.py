@@ -28,7 +28,7 @@ class Train_FBI(object):
         
         self.tr_data_loader = TrdataLoader(_tr_data_dir, self.args)
         self.tr_data_loader = DataLoader(self.tr_data_loader, batch_size=self.args.batch_size, shuffle=True, num_workers=0, drop_last=True)
-
+        
         self.te_data_loader = TedataLoader(_te_data_dir, self.args)
         self.te_data_loader = DataLoader(self.te_data_loader, batch_size=1, shuffle=False, num_workers=0, drop_last=False)
 
@@ -42,18 +42,25 @@ class Train_FBI(object):
         self.save_file_name = _save_file_name
 
         self.logger = Logger(self.args.nepochs, len(self.tr_data_loader))
-        os.makedirs("./samsung_log",exist_ok=True)
-        self.writer = SummaryWriter("./samsung_log")
-        
-        if self.args.loss_function== 'MSE':
+        if "Samsung" in self.args.data_name:
+            log_folder = "./samsung_log"
+        else :
+            log_folder = "./log"
+        os.makedirs(log_folder,exist_ok=True)
+        self.writer = SummaryWriter(log_folder)
+
+        if self.args.loss_function== 'MSE': # upper bound 1-1(optional)
             self.loss = torch.nn.MSELoss()
             num_output_channel = 1
-        elif self.args.loss_function == 'N2V':
+            self.args.output_type = "linear"
+        elif self.args.loss_function == 'N2V': #lower bound
             self.loss = mse_bias
             num_output_channel = 1
-        elif self.args.loss_function == 'MSE_Affine':
+            self.args.output_type = "linear"
+        elif self.args.loss_function == 'MSE_Affine': # 1st(our case upper bound)
             self.loss = mse_affine
             num_output_channel = 2
+            self.args.output_type = "linear"
         elif self.args.loss_function == 'EMSE_Affine':
             
             self.loss = emse_affine
@@ -67,6 +74,7 @@ class Train_FBI(object):
             for param in self.pge_model.parameters():
                 param.requires_grad = False
             
+            self.args.output_type = "sigmoid"
         
         if self.args.model_type == 'FC-AIDE':
             self.model = FC_AIDE(channel = 1, output_channel = num_output_channel, filters = 64, num_of_layers=10, output_type = self.args.output_type, sigmoid_value = self.args.sigmoid_value)
@@ -102,7 +110,24 @@ class Train_FBI(object):
 
         X_hat = output[:,:1] * Z + output[:,1:]
             
+        print(X_hat[0])
         return X_hat
+    def update_log(self,epoch,output):
+        args = self.args
+        mean_tr_loss, mean_te_loss, mean_psnr, mean_ssim = output
+        
+        prefix = ""
+        
+        if "Samsung" in self.args.data_name:
+            prefix = f"{self.args.data_name}_SET{self.args.set_num}_{self.args.loss_function}"
+        else :
+            prefix = f"{self.args.data_name}_"
+
+        self.writer.add_scalar(f"{prefix}Tr loss_{args.alpha}&{args.beta}",round(mean_tr_loss,4),epoch)
+        self.writer.add_scalar(f"{prefix}Te loss_{args.alpha}&{args.beta}",round(mean_te_loss,4),epoch)
+        self.writer.add_scalar(f"{prefix}SSIM_{args.alpha}&{args.beta}",round(mean_ssim,4),epoch)
+        self.writer.add_scalar(f"{prefix}Best PSNR_{args.alpha}&{args.beta}",round(self.best_psnr,4),epoch)
+
         
     def eval(self):
         """Evaluates denoiser on validation set."""
@@ -188,8 +213,8 @@ class Train_FBI(object):
                 loss_arr.append(loss)
                 psnr_arr.append(get_PSNR(X[0], X_hat[0]))
                 ssim_arr.append(get_SSIM(X[0], X_hat[0],self.args.data_type))
-                time_arr.append(inference_time)
                 denoised_img_arr.append(X_hat[0].reshape(X_hat.shape[2],X_hat.shape[3]))
+                time_arr.append(inference_time)
 
         mean_loss = np.mean(loss_arr)
         mean_psnr = np.mean(psnr_arr)
@@ -199,7 +224,7 @@ class Train_FBI(object):
         if self.best_psnr <= mean_psnr:
             self.best_psnr = mean_psnr
             self.result_denoised_img_arr = denoised_img_arr.copy()
-            
+        
             
         return mean_loss, mean_psnr, mean_ssim, mean_time
     
@@ -219,16 +244,7 @@ class Train_FBI(object):
 #         sio.savemat('./result_data/'+self.save_file_name + '_result',{'tr_loss_arr':self.result_tr_loss_arr, 'te_loss_arr':self.result_te_loss_arr,'psnr_arr':self.result_psnr_arr, 'ssim_arr':self.result_ssim_arr})
 
         print ('Epoch : ', epoch, ' Tr loss : ', round(mean_tr_loss,4), ' Te loss : ', round(mean_te_loss,4), ' PSNR : ', round(mean_psnr,2), ' SSIM : ', round(mean_ssim,4),' Best PSNR : ', round(self.best_psnr,4)) 
-        prefix = ""
-        if "Samsung" in self.args.data_name:
-            prefix = f"{self.args.data_name}_SET{self.args.set_num}_"
-        else :
-            prefix = f"{self.args.data_name}_"
-
-        self.writer.add_scalar(f"{prefix}Tr loss",round(mean_tr_loss,4),epoch)
-        self.writer.add_scalar(f"{prefix}Te loss",round(mean_te_loss,4),epoch)
-        self.writer.add_scalar(f"{prefix}SSIM",round(mean_ssim,4),epoch)
-        self.writer.add_scalar(f"{prefix}Best PSNR",round(self.best_psnr,4),epoch)
+        self.update_log(epoch,[mean_tr_loss, mean_te_loss, mean_psnr, mean_ssim])
   
     def train(self):
         """Trains denoiser on training set."""
@@ -244,7 +260,6 @@ class Train_FBI(object):
 
                 source = source.cuda()
                 target = target.cuda()
-                
 
                 # Denoise
                 if self.args.loss_function =='EMSE_Affine':
@@ -266,7 +281,7 @@ class Train_FBI(object):
                         output, _ = self.model(source)
                     else:
                         output = self.model(source)
-                
+                        
                 loss = self.loss(output, target)
                     
                 loss.backward()

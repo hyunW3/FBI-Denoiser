@@ -37,7 +37,7 @@ class New_model(nn.Module):
         
         if self.output_type == 'sigmoid':
             self.sigmoid=nn.Sigmoid().cuda()
-        
+        print(f"output type : {self.output_type}")
         self.new = AttrProxy(self, 'new_')
 
     def forward(self, x):
