@@ -19,8 +19,9 @@ import gc
 import json
 from itertools import repeat,product
 import argparse
-from multiprocessing import Process, Pool, Lock
-import multiprocessing
+#from multiprocessing import Process, Lock
+import torch.multiprocessing as mp
+from torch.multiprocessing import Process, Lock
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"  # Arrange GPU devices starting from 0
 from core.data_loader import sem_generator,patch_generator, load_whole_image
 from core.crop_image import scale_f_num_0to3,crop_image, make_image_crop
@@ -50,8 +51,7 @@ shift_info_lock = Lock()
 
 from torchvision.transforms import *
 transformation = torchvision.transforms.Compose([
-    ToTensor(),
-    Normalize(0,255)
+    ToTensor()
 ])
 ## function define
 
@@ -94,7 +94,8 @@ def show_patch(crop_im):
     PIL.Image.fromarray(crop_im)
 def read_image_and_crop_unpack(arg):
     return read_image_and_crop(*arg)
-def read_image_and_crop(image : np.array, target : np.array,v_shift : int ,h_shift : int,device_id : int,return_list):
+def read_image_and_crop(image : np.array, target : np.array,v_shift : int ,h_shift : int,
+                        device_id : int, return_list, lock):
     v_pad, h_pad = abs(v_shift), abs(h_shift)
     top = random.randrange(v_pad,image.shape[0]-crop_size-v_pad)
     left = random.randrange(h_pad,image.shape[1]-crop_size-h_pad)
@@ -102,12 +103,14 @@ def read_image_and_crop(image : np.array, target : np.array,v_shift : int ,h_shi
     if args.test is True:
         print(top,",",left,",",v_shift,",",h_shift)
     #im_t,target_im_t = transformation(image).cuda(device_id),transformation(target).cuda(device_id)
-    im_t,target_im_t = transformation(image),transformation(target)
+    #im_t,target_im_t = transformation(image),transformation(target)
+    im_t,target_im_t = torch.Tensor(image/255.),torch.Tensor(target/255.)
     crop_im = torchvision.transforms.functional.crop(im_t,top,left, crop_size,crop_size)
     crop_target_im = torchvision.transforms.functional.crop(target_im_t,top+v_shift,left+h_shift, crop_size,crop_size)
+    print(f"{os.getpid()} is cropped",flush=True)
     return_list.append([crop_im,crop_target_im])
-    if device_id == 0:
-        print(return_list)
+    
+    print(f"{os.getpid()} is end")
     #return crop_im,crop_target_im
 def make_patch_of_image(image_path,device_id):
     global shift_info
@@ -127,18 +130,21 @@ def make_patch_of_image(image_path,device_id):
     shift_info[f"SET{device_id+1}"][image_path] = {'v_shift' : v_shift, 'h_shift' : h_shift}
     shift_info_lock.release()
     process = []
-    manager = multiprocessing.Manager()
+    manager = mp.Manager()
     result = manager.list()
-    patch_arg = [im,target_im,v_shift,h_shift,device_id,result]
+    result_lock = Lock()
+    patch_arg = [im,target_im,v_shift,h_shift,device_id,result,result_lock]
     for i in range(num_crop):
         p = Process(target=read_image_and_crop,args=patch_arg)
         p.start()
         process.append(p)
     for p in process:
         p.join()
+    if device_id == 0:
+        print(len(result))
     for index, pair in enumerate(result):
         im_cropped,target_im_cropped = pair
-        noisy_patch[index],target_patch[index] = im_cropped.cuda(device_id),target_im_cropped.cuda(device_id)
+        noisy_patch[index],target_patch[index] = im_cropped.cuda(device_id) ,target_im_cropped.cuda(device_id) 
     
     """
     for index in range(num_crop):
@@ -234,11 +240,14 @@ process = []
 for device_id,set_num in enumerate(sorted(os.listdir(data_path))):
     #make_dataset_per_set(data_path, set_num ,device_id)
     shift_info[f"SET{device_id+1}"] = {}
+    make_dataset_per_set(data_path, set_num ,device_id)
+"""
     p = Process(target=make_dataset_per_set, args=(data_path,set_num,device_id))
     p.start()
     process.append(p)
 for p in process:
     p.join()
+"""
     
 print("complete")
 with open('shift_info.txt', 'w') as f:
