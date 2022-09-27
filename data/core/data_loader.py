@@ -33,6 +33,22 @@ def load_whole_image(path : str,num_per_Ffolder : int) -> dict:
         set_path = os.path.join(path,set_number)
         whole_images[set_number] = load_set_images(set_path,num_per_Ffolder)
     return whole_images
+
+def crop_image(image : np.array,size : int):
+    #return image[:size,:size]
+    return image[size*4:size*5,size*4:size*5]
+num_per_Ffolder = 16
+def load_single_image(set_num : int, f_num : int, num : int, do_crop=False):
+    flag1 = set_num <0 or set_num >4
+    flag2 = f_num not in [8,16,32,64]
+    flag3 = num not in range(1,num_per_Ffolder+1)
+    if flag1 or flag2 or flag3:
+        print(f"It has Undesirable arugment\n1st : {flag1}, 2nd : {flag2}, 3rd : {flag3}")
+        raise    
+    image = cv2.imread(f"data/Samsung_SNU/[SET {set_num}]/F{f_num}/{num}_F{f_num}.png",cv2.IMREAD_GRAYSCALE)        
+    if do_crop is True:
+        image = crop_image(image,256)
+    return image
 # whole_images = load_whole_image(data_path)
 def sem_generator(data_path : str):
     for set_num in sorted(os.listdir(data_path)):

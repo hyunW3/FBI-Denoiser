@@ -77,12 +77,10 @@ if __name__ == '__main__':
             
             save_file_name = str(args.date)+ '_'+str(args.model_type)+'_' + str(args.data_type) +'_'+ str(args.data_name)
         else : # for samsung SEM image
-            te_data_dir = './data/Samsung_SNU'
-            #fbi_weight_dir = './weights/FBI_Denoiser_TP_MICE.w'
-            #pge_weight_dir = './weights/PGE_Net_TP_MICE.w'
+            te_data_dir = f'./data/test_Samsung_SNU_patches_SET{args.set_num}.hdf5'
             
-            fbi_weight_dir = './weights/FBI_Denoiser_CF_MICE.w'
-            pge_weight_dir = './weights/PGE_Net_CF_MICE.w'
+            fbi_weight_dir = './weights/220908_FBI_Net_Grayscale_Samsung_SET1_layers_x17_filters_x64_cropsize_256.w'
+            pge_weight_dir = './weights/220908_PGE_Net_Grayscale_Samsung_SET1_cropsize_256.w'
 
             save_file_name = str(args.date)+ '_'+str(args.model_type)+'_' + str(args.data_type) +'_'+ str(args.data_name)
 
