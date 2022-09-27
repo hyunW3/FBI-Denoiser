@@ -2,6 +2,15 @@ import os
 import torch
 import random
 import numpy as np
+from contextlib import contextmanager
+from torch.multiprocessing import Pool
+
+@contextmanager
+def poolcontext(*args, **kwargs):
+    pool = Pool(*args, **kwargs)
+    yield pool
+    pool.terminate()
+    
 def convert_size(size_bytes):
     import math
     if size_bytes == 0:
