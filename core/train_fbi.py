@@ -110,7 +110,7 @@ class Train_FBI(object):
 
         X_hat = output[:,:1] * Z + output[:,1:]
             
-        print(X_hat[0])
+        #print(X_hat[0])
         return X_hat
     def update_log(self,epoch,output):
         args = self.args
