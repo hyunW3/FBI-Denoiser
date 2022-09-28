@@ -18,7 +18,92 @@ import math
 from skimage.metrics import structural_similarity as compare_ssim
 from sklearn.metrics import mean_squared_error
 from sklearn.feature_extraction import image
- 
+
+class TrdataLoader():
+
+    def __init__(self, _tr_data_dir=None, _args = None):
+
+        self.tr_data_dir = _tr_data_dir
+        self.args = _args
+        
+        self.data = h5py.File(self.tr_data_dir, "r")
+
+        self.noisy_arr = self.data["noisy_images"]
+        self.clean_arr = self.data["clean_images"]
+        
+        print("noisy_arr : ",self.noisy_arr.shape, f"pixel value range from {self.noisy_arr[-1].min()} ~ {self.noisy_arr[-1].max()}")
+        print("clean_arr : ",self.clean_arr.shape, f"pixel value range from {self.clean_arr[-1].min()} ~ {self.clean_arr[-1].max()}")
+
+        self.num_data = self.clean_arr.shape[0]
+        print ('num of training patches : ', self.num_data)
+
+    def __len__(self):
+        return self.num_data
+    
+    def __getitem__(self, index):
+        
+        # random crop
+        
+
+        if self.args.noise_type == 'Gaussian' or self.args.noise_type == 'Poisson-Gaussian':
+
+            clean_img = self.clean_arr[index,:,:]
+            noisy_img = self.noisy_arr[index,:,:]
+            # to check valid array
+            #print(self.clean_arr[index,:,:].shape)
+            #print(index,np.unique(self.clean_arr[index]),np.unique(clean_img))
+            if self.args.data_type == 'Grayscale':
+                
+                rand = random.randrange(1,10000)
+                clean_patch,noisy_patch = None,None
+                if clean_img.shape[0] <= self.args.crop_size and clean_img.shape[1] <= self.args.crop_size:
+                    clean_patch = clean_img
+                    noisy_patch = noisy_img
+                else :
+                    clean_patch = image.extract_patches_2d(image = clean_img ,patch_size = (self.args.crop_size, self.args.crop_size), 
+                                             max_patches = 1, random_state = rand)
+                    noisy_patch = image.extract_patches_2d(image = noisy_img ,patch_size = (self.args.crop_size, self.args.crop_size), 
+                                             max_patches = 1, random_state = rand)
+                
+                            # Random horizontal flipping
+                if random.random() > 0.5:
+                    clean_patch = np.fliplr(clean_patch)
+                    noisy_patch = np.fliplr(noisy_patch)
+
+                # Random vertical flipping
+                if random.random() > 0.5:
+                    clean_patch = np.flipud(clean_patch)
+                    noisy_patch = np.flipud(noisy_patch)
+                    
+            else:
+
+                rand_x = random.randrange(0, (clean_img.shape[0] - self.args.crop_size -1) // 2)
+                rand_y = random.randrange(0, (clean_img.shape[1] - self.args.crop_size -1) // 2)
+
+                clean_patch = clean_img[rand_x*2 : rand_x*2 + self.args.crop_size, rand_y*2 : rand_y*2 + self.args.crop_size].reshape(1, self.args.crop_size, self.args.crop_size)
+                noisy_patch = noisy_img[rand_x*2 : rand_x*2 + self.args.crop_size, rand_y*2 : rand_y*2 + self.args.crop_size].reshape(1, self.args.crop_size, self.args.crop_size)
+
+            
+            if self.args.loss_function == 'MSE':
+            
+                source = torch.from_numpy(noisy_patch.copy())
+                target = torch.from_numpy(clean_patch.copy())
+                
+                return source, target
+            
+            elif self.args.loss_function == 'MSE_Affine' or self.args.loss_function == 'N2V' or self.args.loss_function == 'Noise_est' or self.args.loss_function == 'EMSE_Affine':
+                #print("===== at lossfunction =====\n",np.unique(noisy_patch[0]))
+                source = torch.from_numpy(noisy_patch.copy())
+                target = torch.from_numpy(clean_patch.copy())
+                
+                target = torch.cat([source,target], dim = 0)
+                #print(torch.unique(source[0]))
+                return source, target
+
+        else: ## real data
+               
+            return source, target
+    
 class TedataLoader():
 
     def __init__(self,_te_data_dir=None, args = None):

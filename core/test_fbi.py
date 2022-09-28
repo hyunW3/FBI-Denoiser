@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 import scipy.io as sio
 
-from .utils import TedataLoader, SEMdataLoader, get_PSNR, get_SSIM, inverse_gat, gat, normalize_after_gat_torch
+from .utils import TedataLoader, get_PSNR, get_SSIM, inverse_gat, gat, normalize_after_gat_torch
 from .models import New_model
 from .unet import est_UNet
 
