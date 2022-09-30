@@ -174,7 +174,7 @@ class Train_FBI(object):
                         loss = self.loss(output, target)
                 
                 loss = loss.cpu().numpy()
-
+                
                 # Update loss
                 if self.args.loss_function == 'MSE':
                     output = output.cpu().numpy()

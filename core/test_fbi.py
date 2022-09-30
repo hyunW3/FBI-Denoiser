@@ -16,12 +16,7 @@ class Test_FBI(object):
     def __init__(self,_te_data_dir=None,_pge_weight_dir=None,_fbi_weight_dir=None, _save_file_name = None, _args = None):
         
         self.args = _args
-        """
-        if "Samsung" in _te_data_dir :
-            self.te_data_loader = SEMdataLoader(_args=self.args)
-        else :
-            self.te_data_loader = TedataLoader(_te_data_dir, self.args)
-        """
+        self.te_data_loader = TedataLoader(_te_data_dir, self.args)
         self.te_data_loader = DataLoader(self.te_data_loader, batch_size=1, shuffle=False, num_workers=0, drop_last=False)
 
         self.result_psnr_arr = []
@@ -30,8 +25,16 @@ class Test_FBI(object):
         self.result_denoised_img_arr = []
         self.best_psnr = 0
         self.save_file_name = _save_file_name
-
-        num_output_channel = 2
+        num_output_channel = 1
+        self.args.output_type = "linear"
+        if "AFFINE" in self.args.loss_function:
+            num_output_channel = 2
+            self.args.output_type = "sigmoid"
+        """
+        else :
+            num_output_channel = 1
+        """
+        
         
         self.model = New_model(channel = 1, output_channel =  num_output_channel, filters = self.args.num_filters, 
                                 num_of_layers=self.args.num_layers, case = self.args.model_type, output_type = self.args.output_type, 
@@ -44,11 +47,10 @@ class Test_FBI(object):
         print ('num of parameters : ', pytorch_total_params)
         
         ## load PGE model
-        
+        num_output_channel = 2
         self.pge_model=est_UNet(num_output_channel,depth=3)
         self.pge_model.load_state_dict(torch.load(_pge_weight_dir))
         self.pge_model.cuda()
-        
     def get_X_hat(self, Z, output):
 
         X_hat = output[:,:1] * Z + output[:,1:]
@@ -73,39 +75,75 @@ class Test_FBI(object):
                 target = target.cuda()
                 
                 # Denoise
-                est_param=self.pge_model(source)
-                original_alpha=torch.mean(est_param[:,0])
-                original_sigma=torch.mean(est_param[:,1])
-
-                transformed=gat(source,original_sigma,original_alpha,0)
-                transformed, transformed_sigma, min_t, max_t= normalize_after_gat_torch(transformed)
-
-                transformed_target = torch.cat([transformed, transformed_sigma], dim = 1)
+                if self.args.loss_function =='EMSE_Affine':
+                                        
+                    est_param=self.pge_model(source)
+                    original_alpha=torch.mean(est_param[:,0])
+                    original_sigma=torch.mean(est_param[:,1])
+                    
+                    transformed=gat(source,original_sigma,original_alpha,0)
+                    transformed, transformed_sigma, min_t, max_t= normalize_after_gat_torch(transformed)
+                    
+                    transformed_target = torch.cat([transformed, transformed_sigma], dim = 1)
 #                     target = torch.cat([target,transformed_sigma], dim = 1)
 
-                output = self.model(transformed)
-
-                transformed_Z = transformed_target[:,:1]
-                X = target.cpu().numpy()
-                X_hat = self.get_X_hat(transformed_Z,output).cpu().numpy()
-
-                transformed=transformed.cpu().numpy()
-                original_sigma=original_sigma.cpu().numpy()
-                original_alpha=original_alpha.cpu().numpy()
+                    output = self.model(transformed)
+    
+                    # loss = self.loss(output, transformed_target)
+        
+                else:
+                    # Denoise image
+                    if self.args.model_type == 'DBSN':
+                        output, _ = self.model(source)
+                        # loss = self.loss(output, target)
+                    else:
+                        output = self.model(source)
+                        # loss = self.loss(output, target)
                 
-                min_t=min_t.cpu().numpy()
-                max_t=max_t.cpu().numpy()
+
+                if self.args.loss_function == 'MSE':
+                    output = output.cpu().numpy()
+                    X_hat = np.clip(output, 0, 1)
+                    X = target.cpu().numpy()
+                    
+                elif self.args.loss_function == 'MSE_Affine':
+                    
+                    Z = target[:,:1]
+                    X = target[:,1:].cpu().numpy()
+                    X_hat = np.clip(self.get_X_hat(Z,output).cpu().numpy(), 0, 1)
+                    
+                elif  self.args.loss_function == 'N2V':
+                    X = target[:,1:].cpu().numpy()
+                    X_hat = np.clip(output.cpu().numpy(), 0, 1)
+                    
                 
-                X_hat =X_hat*(max_t-min_t)+min_t
-                X_hat=np.clip(inverse_gat(X_hat,original_sigma,original_alpha,0,method='closed_form'), 0, 1)
+                elif self.args.loss_function == 'EMSE_Affine':
+                    
+                    transformed_Z = transformed_target[:,:1]
+                    X = target.cpu().numpy()
+                    X_hat = self.get_X_hat(transformed_Z,output).cpu().numpy()
+                    
+                    transformed=transformed.cpu().numpy()
+                    original_sigma=original_sigma.cpu().numpy()
+                    original_alpha=original_alpha.cpu().numpy()
+                    min_t=min_t.cpu().numpy()
+                    max_t=max_t.cpu().numpy()
+                    X_hat =X_hat*(max_t-min_t)+min_t
+                    X_hat=np.clip(inverse_gat(X_hat,original_sigma,original_alpha,0,method='closed_form'), 0, 1)
                 
                 inference_time = time.time()-start
-                
-                psnr_arr.append(get_PSNR(X[0], X_hat[0]))
-                ssim_arr.append(get_SSIM(X[0], X_hat[0],self.args.data_type))
+                source = source.cpu().numpy()
+                psnr_val = get_PSNR(X[0], source[0])
+                ssim_val = get_SSIM(X[0], source[0],self.args.data_type)
+                print(f"image : {batch_idx:02d} ->\t psnr : {round(float(psnr_val),4)}, ssim : {round(float(ssim_val),6)} before denoise {self.args.loss_function}")
+       
+                psnr_val = get_PSNR(X[0], X_hat[0])
+                ssim_val = get_SSIM(X[0], X_hat[0],self.args.data_type)
+                psnr_arr.append(psnr_val)
+                ssim_arr.append(ssim_val)
                 time_arr.append(inference_time)
                 denoised_img_arr.append(X_hat[0].reshape(X_hat.shape[2],X_hat.shape[3]))
-                print(f"image : {batch_idx:02d} ->\t psnr : {round(float(get_PSNR(X[0], X_hat[0])),4)}, ssim : {round(float(get_SSIM(X[0], X_hat[0])),6)} ")
+                print(f"image : {batch_idx:02d} ->\t psnr : {round(float(psnr_val),4)}, ssim : {round(float(ssim_val),6)} after denoise {self.args.loss_function}")
        
         mean_psnr = np.mean(psnr_arr)
         mean_ssim = np.mean(ssim_arr)

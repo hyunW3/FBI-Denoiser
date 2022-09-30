@@ -132,7 +132,7 @@ class est_UNet(nn.Module):
         the tranpose convolution (specified by upmode='transpose')
     """
 
-    def __init__(self, num_classes, in_channels=1, depth=5,
+    def __init__(self, num_classes, in_channels=1, depth=3,
                  start_filts=64, up_mode='transpose',
                  merge_mode='add',use_type='optimize_gat'):
         """
