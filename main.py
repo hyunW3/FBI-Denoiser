@@ -48,7 +48,7 @@ if __name__ == '__main__':
 
         print ('tr data dir : ', tr_data_dir)
         print ('te data dir : ', te_data_dir)
-    
+    save_file_name += f"_{self.args.loss_function}"
     if args.model_type == 'FC-AIDE':
         save_file_name += '_layers_x' + str(10) + '_filters_x' + str(64)
     elif args.model_type == 'DBSN':
