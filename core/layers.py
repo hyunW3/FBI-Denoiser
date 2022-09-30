@@ -417,7 +417,10 @@ class QED_layer(nn.Module):
     def forward(self, inputs):
         
         outputs = []
-
+        if len(inputs[0].shape) < 4:
+            for i in range(3):
+                inputs[i] = torch.unsqueeze(inputs[i],dim=0)
+                #print(inputs[i].shape)
         out_q2 = self.q2_prelu(inputs[0])
         out_e2 = self.e2_prelu(inputs[1])
         out_d2 = self.d2_prelu(inputs[2])

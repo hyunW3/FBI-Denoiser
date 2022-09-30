@@ -7,13 +7,16 @@ from .layers import QED_first_layer, QED_layer
 class Average_layer(nn.Module):
     def __init__(self, in_ch):
         super(Average_layer, self).__init__()
-        self.prelu = nn.PReLU(in_ch,0).cuda()
+        self.prelu = nn.PReLU(in_ch,0).cuda() # in_ch 64
 
     def forward(self, inputs):
 
         mean = torch.mean(torch.stack(inputs), dim=0)
+        if len(mean.shape) <4 :
+            mean = torch.unsqueeze(mean,dim=0)
+        #print((torch.stack(inputs)).shape, mean.shape) # torch.Size([3, 64, 256, 256]) torch.Size([64, 256, 256])
         output = self.prelu(mean)
-        
+        mean = torch.squeeze(mean,dim=0)
         return output
 
 class Residual_module(nn.Module):
