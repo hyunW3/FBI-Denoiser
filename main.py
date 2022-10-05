@@ -34,11 +34,9 @@ if __name__ == '__main__':
             
                 save_file_name = str(args.date)+ '_'+str(args.model_type)+'_' + str(args.data_type) +'_'+ str(args.data_name)+ '_alpha_' + str(args.alpha) + '_beta_' + str(args.beta)
         else : #Samsung SEM image
-            tr_data_dir = ""
+            tr_data_dir = f"./data/train_Samsung_SNU_patches_SET{args.set_num}.hdf5"
             if args.test :
-                tr_data_dir = f'./data/val_Samsung_SNU_patches_SET{args.set_num}.hdf5'
-            else :
-                tr_data_dir = f'./data/train_Samsung_SNU_patches_SET{args.set_num}.hdf5'
+                tr_data_dir = f"./data/val_Samsung_SNU_patches_SET{args.set_num}.hdf5"
             te_data_dir = f'./data/val_Samsung_SNU_patches_SET{args.set_num}.hdf5'
             
             save_file_name = f"{args.date}_{args.model_type}_{args.data_type}_{args.data_name}_SET{args.set_num}"
@@ -48,7 +46,8 @@ if __name__ == '__main__':
 
         print ('tr data dir : ', tr_data_dir)
         print ('te data dir : ', te_data_dir)
-    save_file_name += f"_{self.args.loss_function}"
+        
+    save_file_name += f"_{args.loss_function}"
     if args.model_type == 'FC-AIDE':
         save_file_name += '_layers_x' + str(10) + '_filters_x' + str(64)
     elif args.model_type == 'DBSN':

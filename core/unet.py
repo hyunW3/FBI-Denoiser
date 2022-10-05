@@ -138,7 +138,7 @@ class est_UNet(nn.Module):
         """
         Arguments:
             in_channels: int, number of channels in the input tensor.
-                Default is 3 for RGB images.
+                Default is 1 and for RGB images Set 3.
             depth: int, number of MaxPools in the U-Net.
             start_filts: int, number of convolutional filters for the
                 first conv.

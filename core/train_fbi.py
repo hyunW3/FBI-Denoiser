@@ -5,7 +5,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 import numpy as np
 import scipy.io as sio
-
+from datetime import date
 from .utils import TedataLoader, TrdataLoader, get_PSNR, get_SSIM, inverse_gat, gat, normalize_after_gat_torch
 from .loss_functions import mse_bias, mse_affine, emse_affine
 from .logger import Logger
@@ -40,7 +40,7 @@ class Train_FBI(object):
         self.result_tr_loss_arr = []
         self.best_psnr = 0
         self.save_file_name = _save_file_name
-
+        self.date = date.today().isoformat()
         self.logger = Logger(self.args.nepochs, len(self.tr_data_loader))
         if "Samsung" in self.args.data_name:
             log_folder = "./samsung_log"
@@ -115,18 +115,17 @@ class Train_FBI(object):
     def update_log(self,epoch,output):
         args = self.args
         mean_tr_loss, mean_te_loss, mean_psnr, mean_ssim = output
-        
-        prefix = ""
+        prefix = f"{self.date}"
         
         if "Samsung" in self.args.data_name:
-            prefix = f"{self.args.data_name}_SET{self.args.set_num}_{self.args.loss_function}"
+            prefix = f"{self.args.data_name}_SET{self.args.set_num}_{self.args.loss_function}_{self.args.output_type}"
         else :
             prefix = f"{self.args.data_name}_"
 
         self.writer.add_scalar(f"{prefix}Tr loss_{args.alpha}&{args.beta}",round(mean_tr_loss,4),epoch)
         self.writer.add_scalar(f"{prefix}Te loss_{args.alpha}&{args.beta}",round(mean_te_loss,4),epoch)
-        self.writer.add_scalar(f"{prefix}SSIM_{args.alpha}&{args.beta}",round(mean_ssim,4),epoch)
-        self.writer.add_scalar(f"{prefix}Best PSNR_{args.alpha}&{args.beta}",round(self.best_psnr,4),epoch)
+        self.writer.add_scalar(f"{prefix}Mean SSIM_{args.alpha}&{args.beta}",round(mean_ssim,4),epoch)
+        self.writer.add_scalar(f"{prefix}Mean PSNR_{args.alpha}&{args.beta}",round(mean_psnr,4),epoch)
 
         
     def eval(self):
@@ -243,7 +242,8 @@ class Train_FBI(object):
 
 #         sio.savemat('./result_data/'+self.save_file_name + '_result',{'tr_loss_arr':self.result_tr_loss_arr, 'te_loss_arr':self.result_te_loss_arr,'psnr_arr':self.result_psnr_arr, 'ssim_arr':self.result_ssim_arr})
 
-        print ('Epoch : ', epoch, ' Tr loss : ', round(mean_tr_loss,4), ' Te loss : ', round(mean_te_loss,4), ' PSNR : ', round(mean_psnr,2), ' SSIM : ', round(mean_ssim,4),' Best PSNR : ', round(self.best_psnr,4)) 
+        print ('Epoch : ', epoch, ' Tr loss : ', round(mean_tr_loss,4), ' Te loss : ', round(mean_te_loss,4),
+             ' PSNR : ', round(mean_psnr,4), ' SSIM : ', round(mean_ssim,4),' Best PSNR : ', round(self.best_psnr,4)) 
         self.update_log(epoch,[mean_tr_loss, mean_te_loss, mean_psnr, mean_ssim])
   
     def train(self):
@@ -260,7 +260,7 @@ class Train_FBI(object):
 
                 source = source.cuda()
                 target = target.cuda()
-
+                #print(source.shape, target.shape) # torch.Size([1, 256, 256]) torch.Size([1,2 ,256, 256])
                 # Denoise
                 if self.args.loss_function =='EMSE_Affine':
                                         

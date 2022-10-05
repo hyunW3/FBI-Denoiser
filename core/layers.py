@@ -52,13 +52,8 @@ class Residual_module(nn.Module):
         self.conv2_1by1 = nn.Conv2d(in_channels=in_ch*mul, out_channels=in_ch, kernel_size = 1)
 
     def forward(self, input):
-
         output_residual = self.conv1_1by1(input)
-        # samsung sem image has 3 dimension(basically 4 dimension)
-        #  #might be it is grayscale image...?
-        if len(output_residual.shape) < 4:
-            output_residual = output_residual.unsqueeze(axis=0)
-        # print("before activation1 : ",output_residual.shape,self.activation1.weight.shape)
+
         output_residual = self.activation1(output_residual)
         output_residual = self.conv2_1by1(output_residual)
         

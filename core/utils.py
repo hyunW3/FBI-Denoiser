@@ -27,7 +27,7 @@ class TrdataLoader():
         self.args = _args
         
         self.data = h5py.File(self.tr_data_dir, "r")
-
+        
         self.noisy_arr = self.data["noisy_images"]
         self.clean_arr = self.data["clean_images"]
         
@@ -65,7 +65,7 @@ class TrdataLoader():
                     noisy_patch = image.extract_patches_2d(image = noisy_img ,patch_size = (self.args.crop_size, self.args.crop_size), 
                                              max_patches = 1, random_state = rand)
                 
-                            # Random horizontal flipping
+                    # Random horizontal flipping
                 if random.random() > 0.5:
                     clean_patch = np.fliplr(clean_patch)
                     noisy_patch = np.fliplr(noisy_patch)
@@ -74,7 +74,8 @@ class TrdataLoader():
                 if random.random() > 0.5:
                     clean_patch = np.flipud(clean_patch)
                     noisy_patch = np.flipud(noisy_patch)
-                    
+                # need to expand_dims since grayscale has no channel dimension
+                clean_patch, noisy_patch = np.expand_dims(clean_patch,axis=0), np.expand_dims(noisy_patch,axis=0)
             else:
 
                 rand_x = random.randrange(0, (clean_img.shape[0] - self.args.crop_size -1) // 2)
@@ -92,12 +93,11 @@ class TrdataLoader():
                 return source, target
             
             elif self.args.loss_function == 'MSE_Affine' or self.args.loss_function == 'N2V' or self.args.loss_function == 'Noise_est' or self.args.loss_function == 'EMSE_Affine':
-                #print("===== at lossfunction =====\n",np.unique(noisy_patch[0]))
+                
                 source = torch.from_numpy(noisy_patch.copy())
                 target = torch.from_numpy(clean_patch.copy())
                 
-                target = torch.cat([source,target], dim = 0)
-                #print(torch.unique(source[0]))
+                target = torch.cat([source,target], dim = 0) # (512,256) -> (2,256,256)
                 return source, target
 
         else: ## real data
