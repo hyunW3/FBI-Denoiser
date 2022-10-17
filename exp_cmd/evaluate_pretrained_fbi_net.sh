@@ -1,5 +1,5 @@
 #! /bin/bash
-
+cd ../
 GPU_NUM=0
 
 # data_type = ['RawRGB', 'SIDD', 'DND', 'FMD']

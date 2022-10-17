@@ -1,4 +1,5 @@
 #! /bin/bash
+cd ../
 
 GPU_NUM=0
 
