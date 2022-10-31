@@ -119,6 +119,10 @@ class Train_FBI(object):
         
         if "Samsung" in self.args.data_name:
             prefix = f"{self.args.data_name}_SET{self.args.set_num}_{self.args.loss_function}_{self.args.output_type}"
+            if args.use_other_target is True:
+                prefix += f'_x_as_{self.args.x_f_num}_y_as_{self.args.y_f_num}'
+            if args.integrate_all_set is True:
+                prefix += f'_integrate_all_set'
         else :
             prefix = f"{self.args.data_name}_"
 

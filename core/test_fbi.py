@@ -2,6 +2,7 @@ import torch
 from torch.utils.data import DataLoader
 
 import numpy as np
+import os
 import scipy.io as sio
 
 from datetime import date
@@ -34,7 +35,6 @@ class Test_FBI(object):
         self.best_psnr = 0
         self.save_file_name = _save_file_name
         self.date = date.today().isoformat()
-        
         if self.args.loss_function== 'MSE': # upper bound 1-1(optional)
             self.loss = torch.nn.MSELoss()
             num_output_channel = 1
@@ -77,7 +77,6 @@ class Test_FBI(object):
                             activate_fun = 'Relu')
         else:
             self.model = New_model(channel = 1, output_channel =  num_output_channel, filters = self.args.num_filters, num_of_layers=self.args.num_layers, case = self.args.model_type, output_type = self.args.output_type, sigmoid_value = self.args.sigmoid_value)
-            
         self.model.load_state_dict(torch.load(_fbi_weight_dir))
         self.model = self.model.cuda()
     def get_X_hat(self, Z, output):
@@ -186,7 +185,7 @@ class Test_FBI(object):
             
         print ('PSNR : ', round(mean_psnr,4), '\tSSIM : ', round(mean_ssim,4))
         denoised_img_arr = np.array(denoised_img_arr)
-        np.save(f'./result_data/{self._te_data_dir}_denoised_{self.args.loss_function}.npy',denoised_img_arr)
+        np.save(f'./result_data/{self.save_file_name}.npy',denoised_img_arr)
         return 
   
 

@@ -25,11 +25,27 @@ class TrdataLoader():
 
         self.tr_data_dir = _tr_data_dir
         self.args = _args
+        if  self.args.integrate_all_set is False:
+            self.data = h5py.File(self.tr_data_dir, "r")
+        self.noisy_arr, self.clean_arr = None, None
         
-        self.data = h5py.File(self.tr_data_dir, "r")
-        
-        self.noisy_arr = self.data["noisy_images"]
-        self.clean_arr = self.data["clean_images"]
+        if self.args.use_other_target is True:
+            if  self.args.integrate_all_set is True:
+                for subset_tr_data_dir in self.tr_data_dir:
+                    data = h5py.File(subset_tr_data_dir, "r")
+                    if self.noisy_arr is None:
+                        self.clean_arr = data[f'{self.args.y_f_num}']
+                        self.noisy_arr = data[f'{self.args.x_f_num}']
+                    else:
+                        self.noisy_arr = np.concatenate((self.noisy_arr,data[f'{self.args.x_f_num}']),axis=0)
+                        self.clean_arr = np.concatenate((self.clean_arr,data[f'{self.args.y_f_num}']),axis=0)
+
+            else:
+                self.clean_arr = self.data[f'{self.args.y_f_num}']
+                self.noisy_arr = self.data[f'{self.args.x_f_num}']
+        else:
+            self.noisy_arr = self.data["noisy_images"]
+            self.clean_arr = self.data["clean_images"]
         
         print("noisy_arr : ",self.noisy_arr.shape, f"pixel value range from {self.noisy_arr[-1].min()} ~ {self.noisy_arr[-1].max()}")
         print("clean_arr : ",self.clean_arr.shape, f"pixel value range from {self.clean_arr[-1].min()} ~ {self.clean_arr[-1].max()}")
@@ -53,7 +69,6 @@ class TrdataLoader():
             #print(self.clean_arr[index,:,:].shape)
             #print(index,np.unique(self.clean_arr[index]),np.unique(clean_img))
             if self.args.data_type == 'Grayscale':
-                
                 rand = random.randrange(1,10000)
                 clean_patch,noisy_patch = None,None
                 if clean_img.shape[0] <= self.args.crop_size and clean_img.shape[1] <= self.args.crop_size:
@@ -101,7 +116,7 @@ class TrdataLoader():
                 return source, target
 
         else: ## real data
-               
+
             return source, target
     
 class TedataLoader():
@@ -109,14 +124,31 @@ class TedataLoader():
     def __init__(self,_te_data_dir=None, args = None):
 
         self.te_data_dir = _te_data_dir
-        
+        self.args = args
         if 'SIDD' in self.te_data_dir or 'DND' in self.te_data_dir or 'CF' in self.te_data_dir or 'TP' in self.te_data_dir:
             self.data = sio.loadmat(self.te_data_dir)
-        else:
+        elif  self.args.integrate_all_set is False:
             self.data = h5py.File(self.te_data_dir, "r")
-            
-        self.clean_arr = self.data["clean_images"]
-        self.noisy_arr = self.data["noisy_images"]
+    
+        self.noisy_arr, self.clean_arr = None, None
+        
+        if self.args.use_other_target is True:
+            if  self.args.integrate_all_set is True: 
+                for subset_te_data_dir in self.te_data_dir:
+                    data = h5py.File(subset_te_data_dir, "r")
+                    if self.noisy_arr is None:
+                        self.clean_arr = data[f'{self.args.y_f_num}']
+                        self.noisy_arr = data[f'{self.args.x_f_num}']
+                    else:
+                        self.noisy_arr = np.concatenate((self.noisy_arr,data[f'{self.args.x_f_num}']),axis=0)
+                        self.clean_arr = np.concatenate((self.clean_arr,data[f'{self.args.y_f_num}']),axis=0)
+    
+            else:
+                self.clean_arr = self.data[f'{self.args.y_f_num}']
+                self.noisy_arr = self.data[f'{self.args.x_f_num}']
+        else:
+            self.clean_arr = self.data["clean_images"]
+            self.noisy_arr = self.data["noisy_images"]
         self.num_data = self.noisy_arr.shape[0]
         self.args = args
         
@@ -127,9 +159,9 @@ class TedataLoader():
     
     def __getitem__(self, index):
         """Retrieves image from folder and corrupts it."""
-
-        source = self.data["noisy_images"][index,:,:]
-        target = self.data["clean_images"][index,:,:]
+        
+        source = self.noisy_arr[index,:,:]
+        target = self.clean_arr[index,:,:]
         
         if 'SIDD' in self.te_data_dir or 'CF' in self.te_data_dir or 'TP' in self.te_data_dir:
             source = source / 255.

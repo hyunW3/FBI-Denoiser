@@ -31,7 +31,7 @@ parser.add_argument('--test', action='store_true')
 parser.add_argument('--search-width', type=int, default=30)
 args = parser.parse_args()
 
-os.environ["CUDA_VISIBLE_DEVICES"]= "0,2" 
+os.environ["CUDA_VISIBLE_DEVICES"]= "0,1" 
 seed = 0
 seed_everything(seed) # Seed 고정
 
@@ -62,7 +62,8 @@ for device_id,set_num in enumerate(sorted(os.listdir(data_path))):
     # singale process version
     #make_dataset_per_set(data_path, set_num ,device_id)
     # make patch & split train/val/test set
-    p = Process(target=make_dataset_per_set, args=(data_path,set_num,device_id,print_lock,num_crop,args.test))
+    #p = Process(target=make_dataset_per_set, args=(data_path,set_num,device_id,print_lock,num_crop,args.test))
+    p = Process(target=make_f_num_dataset_per_set, args=(data_path,set_num,device_id,print_lock,num_crop,args.test))
     p.start()
     process.append(p)
 for p in process:

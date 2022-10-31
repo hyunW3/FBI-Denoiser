@@ -1,3 +1,4 @@
+from re import L
 import torch
 import torch.backends.cudnn as cudnn
 import torchvision
@@ -108,13 +109,13 @@ def make_patch_of_image(image_path,data_path,set_num,device_id,num_crop=500,num_
             noisy_patch[index],target_patch[index] = im_cropped, target_im_cropped
     return noisy_patch,target_patch
 
-def return_val_test_index():
+def return_val_test_index(length = 16):
     random_seed = random.randint(0,2**32-1)
     seed_everything(random_seed)
-    val_image_index = random.randint(0,15)
-    test_image_index = random.randint(0,15)
+    val_image_index = random.randint(0,length-1)
+    test_image_index = random.randint(0,length-1)
     while val_image_index == test_image_index:
-        test_image_index = random.randint(0,15)
+        test_image_index = random.randint(0,length-1)
     return (val_image_index, test_image_index)
 
 def append_tensor(original,new):
@@ -150,7 +151,7 @@ def make_dataset_per_set(data_path, set_num ,device_id,print_lock,num_crop=500,i
     gc.collect()
     noisy_f_num = ['F8','F16','F32']
     for i,f_num in enumerate(noisy_f_num): # f_num 마다 구분
-        val_index, test_index = return_val_test_index()
+        val_index, test_index = return_val_test_index(length=16)
         #print("======",i, f_num, set_path)
         #print("======",val_index,test_index)
         #print(set_path)
@@ -194,3 +195,118 @@ def make_dataset_per_set(data_path, set_num ,device_id,print_lock,num_crop=500,i
     del train_noisy_patch, train_target_patch, val_noisy_patch, val_target_patch,test_noisy_patch, test_target_patch
     torch.cuda.empty_cache()
     print(f"complete {set_path}")
+    
+## TODO 
+
+def read_image_and_crop_for_patch(iter_num, img_path : dict,
+                        device_id : int, crop_size = 256, is_test=False)-> dict: #, return_list, lock):
+    image = cv2.imread(img_path['F64'],cv2.IMREAD_GRAYSCALE)
+    top = random.randrange(0,image.shape[0]-crop_size)
+    left = random.randrange(0,image.shape[1]-crop_size)
+
+    # torchvision transform not work with multiprocessing
+    img_dict = {}
+    for key, path in img_path.items():
+        # print(path)
+        im = cv2.imread(path,cv2.IMREAD_GRAYSCALE)   
+
+        im_t = im/255.
+        crop_im = im_t[top:top+crop_size,left:left+crop_size]
+        img_dict[key] = crop_im
+    if is_test is True:
+        print(f"{os.getpid()} is cropped",flush=True)
+    return img_dict
+def make_patch_of_f_num_image(image_path,data_path,set_num,device_id,num_crop=500,num_cores=16,is_test=False)->dict:
+    img_path = {}
+    patches_dict = {}
+    image_num = image_path.split("_")[-1]
+    img_path['F64'] = image_path
+    patches_dict['F64'] = np.ones((num_crop,256,256))
+    
+    noisy_f_num = ['F8','F16','F32']
+    for f_num in noisy_f_num:
+        img_path[f'{f_num}'] = os.path.join(data_path,set_num,f"{f_num}_{image_num}")
+        patches_dict[f'{f_num}'] = np.ones((num_crop,256,256))    
+    
+    num_iter = range(num_crop)
+    with poolcontext(num_cores) as p:
+        r = p.map(partial(read_image_and_crop_for_patch,img_path=img_path, device_id=device_id,is_test=is_test),num_iter)
+        if is_test is True:
+            print(os.getpid(),len(r))
+        for index,img_dict in enumerate(r):
+            for key,crop_im in img_dict.items():
+                #print(patches_dict[key].shape)
+                patches_dict[key][index] = crop_im
+    return patches_dict #{'f8' : , 'f16' : 'f32' : 'f64' : }
+
+def append_numpy_from_dict(dataset_type : str, n_arr: np.array, p_dict : dict) -> np.array :
+    key = dataset_type
+    for f_num,arr in p_dict.items():
+        #print(f_num)
+        if n_arr[key][f_num] is None:
+            n_arr[key][f_num] = arr
+        else :
+            n_arr[key][f_num] = np.concatenate((n_arr[key][f_num],arr), axis=0)
+    return n_arr
+def make_intial_patch_for_dataset():
+    patches = dict()
+    dataset_types = ['train', 'val', 'test']
+    f_num_list = ['F8','F16','F32','F64']
+    for dataset_type in dataset_types:
+        patches[dataset_type] = dict()
+        for f_num in f_num_list:
+            patches[dataset_type][f_num] = None
+    return patches
+
+
+def save_f_num_to_hdf5(patch_for_dataset : dict, set_num :int ):
+    """
+    Save the dataset to hdf5 file
+    """
+    for dataset_type in patch_for_dataset.keys():
+        with h5py.File(f"{dataset_type}_Samsung_SNU_patches_{set_num}_divided_by_fnum.hdf5","w") as f:
+            for f_num in patch_for_dataset[dataset_type].keys():
+                f.create_dataset(f_num,patch_for_dataset[dataset_type][f_num].shape, dtype='f', data=patch_for_dataset[dataset_type][f_num])
+        gc.collect()
+def make_f_num_dataset_per_set(data_path, set_num ,device_id,print_lock,num_crop=500,is_test=False):
+    num_test_image = 3
+    num_cores = 16
+    if is_test is True :
+        num_cores = 2
+    set_path = os.path.join(data_path,set_num)
+    print(f"====== {set_path} ======")
+    image_list = sorted(os.listdir(set_path)) # 16
+    image_list = list(filter(lambda x : "F64" not in x,image_list))
+    image_list = list(filter(lambda x : "checkpoints" not in x,image_list))
+    
+    patch_for_dataset = make_intial_patch_for_dataset()
+    gc.collect()
+    val_index, test_index = return_val_test_index(length=16)
+    dataset_index = ['train'] * 16
+    dataset_index[val_index] = 'val'
+    dataset_index[test_index] = 'test'
+    #print("======",i, f_num, set_path)
+    #print("======",val_index,test_index)
+    #print(set_path)
+    for image_idx, image_path in tqdm(enumerate(glob.glob(f"{set_path}/F64*.png"))):
+        dataset_type = dataset_index[image_idx]
+        patches_dict = make_patch_of_f_num_image(image_path,data_path,set_num,device_id,num_crop,num_cores,is_test)
+        if is_test is True:
+            print(image_idx,image_path)
+            print(dataset_type)
+        patch_for_dataset = append_numpy_from_dict(dataset_type,patch_for_dataset,patches_dict)
+        gc.collect()
+        if is_test is True:
+            SET_NUM = f"SET{device_id+1}"
+    print_lock.acquire()
+    print(set_num,patch_for_dataset.keys())
+    for dataset_type in patch_for_dataset.keys():
+        for f_num in patch_for_dataset[dataset_type].keys():
+            print(dataset_type,f_num,patch_for_dataset[dataset_type][f_num].shape)
+    print_lock.release()
+    save_f_num_to_hdf5(patch_for_dataset,set_num)
+    #x_train, x_test, y_train, y_test = train_test_split(noisy_patch,target_patch,test_size=0.08,shuffle=True)
+    #print(x_train.shape, x_test.shape
+    torch.cuda.empty_cache()
+    print(f"complete {set_path}")
+    
