@@ -9,6 +9,9 @@ data/Samsung_SNU*
 data/Samsung+SNU*
 data/output_bm3d/
 
+denoise_and_get_CD/segmenetation_img
+denoise_and_get_CD/result_data
+
 .ipynb_checkpoints
 
 *.hdf5
