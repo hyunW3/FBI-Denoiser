@@ -33,7 +33,18 @@ def load_whole_image(path : str,num_per_Ffolder : int) -> dict:
         set_path = os.path.join(path,set_number)
         whole_images[set_number] = load_set_images(set_path,num_per_Ffolder)
     return whole_images
-
+def load_whole_image_in_folder(path : str) -> dict:
+    whole_images : dict = dict()
+    for set_number in sorted(os.listdir(path)):
+        set_path = os.path.join(path,set_number)
+        images = {}
+        for img_name in sorted(os.listdir(set_path)):
+            if "checkpoints" in img_name:
+                continue
+            img_path = os.path.join(set_path,img_name)
+            images[f"{img_name}"] = cv2.imread(img_path,cv2.IMREAD_GRAYSCALE)
+        whole_images[set_number] = images
+    return whole_images
 def crop_image(image : np.array,size : int):
     #return image[:size,:size]
     return image[size*4:size*5,size*4:size*5]

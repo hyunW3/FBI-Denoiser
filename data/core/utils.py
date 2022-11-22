@@ -68,3 +68,21 @@ def get_dict_structure(target : dict):
             print("")
         except : 
             break
+def show_two_images(img1,img2):
+    plt.subplot(1,2,1)
+    plt.axis('off')
+    plt.title(f"img1")
+    plt.imshow( img1,cmap='gray')
+
+    plt.subplot(1,2,2)
+    plt.axis('off')
+    plt.title(f"img2 ")
+    plt.imshow( img2,cmap='gray')
+def visualize_imgs(imgs : list, titles : dict):
+    n = len(imgs)
+    for i in range(n):
+        index = i+1
+        plt.subplot(1,n,index)
+        plt.axis('off')
+        plt.title(titles[index])
+        plt.imshow(imgs[i],cmap='Spectral')
