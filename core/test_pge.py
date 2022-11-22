@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 import scipy.io as sio
 
-from .utils import TedataLoader, SEMdataLoader, get_PSNR, get_SSIM, inverse_gat, gat, normalize_after_gat_torch
+from .utils import TedataLoader, chen_estimate, get_PSNR, get_SSIM, inverse_gat, gat, normalize_after_gat_torch
 from .unet import est_UNet
 
 import time
@@ -32,11 +32,11 @@ class Test_PGE(object):
         
     def eval(self):
         """Evaluates denoiser on validation set."""
-
+        print(f"data name : {self.args.data_name}")
         alpha_arr = []
         beta_arr = []
         time_arr = []
-
+        estimated_gaussian_noise_level_arr = []
         with torch.no_grad():
 
             for batch_idx, (source, target) in enumerate(self.te_data_loader):
@@ -51,21 +51,32 @@ class Test_PGE(object):
                 original_alpha=torch.mean(est_param[:,0])
                 original_beta=torch.mean(est_param[:,1])
 
-                original_beta=original_beta.cpu().numpy()
-                original_alpha=original_alpha.cpu().numpy()
                 
                 inference_time = time.time()-start
                 
+                print(f"image : {batch_idx:02d} ->\t alpha : {round(float(original_alpha),6)}, sigma : {round(float(original_beta),6)} ")
+                transformed_with_pge = gat(source,original_beta,original_alpha,0)
+                estimated_gaussian_noise_level = chen_estimate(transformed_with_pge)
+                print(f"estimated gaussian_noise  : {estimated_gaussian_noise_level}")
+                transformed_with_pge, transformed_sigma, min_t, max_t= normalize_after_gat_torch(transformed_with_pge)
+                
+                
+                original_beta=original_beta.cpu().numpy()
+                original_alpha=original_alpha.cpu().numpy()
+
+                estimated_gaussian_noise_level_arr.append(estimated_gaussian_noise_level.cpu().numpy())
                 alpha_arr.append(original_alpha)
                 beta_arr.append(original_beta)
                 time_arr.append(inference_time)
-                print(f"image : {batch_idx:02d} ->\t alpha : {round(float(original_alpha),4)}, beta_arr : {round(float(original_beta),6)} ")
         mean_alpha = np.mean(alpha_arr)
         mean_beta = np.mean(beta_arr)
         mean_time = np.mean(time_arr)
-
+        alpha_sigma = np.stack((alpha_arr,beta_arr),axis=1)
+        np.savetxt(f'./output_log/${self.save_file_name}_alpha_sigma.txt',alpha_sigma,delimiter='\t')
         print ('Mean(alpha) : ', round(mean_alpha,4), 'Mean(beta) : ', round(mean_beta,6))
-            
+        f = open("./result.txt",'a')
+        print(f"{self.args.data_name} {self.args.dataset_type} Mean estimated_gaussian_noise_level : {np.mean(estimated_gaussian_noise_level_arr)}",file=f)
+        f.close()
         return 
   
 

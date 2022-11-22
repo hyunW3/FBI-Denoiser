@@ -82,12 +82,25 @@ if __name__ == '__main__':
             
             save_file_name = str(args.date)+ '_'+str(args.model_type)+'_' + str(args.data_type) +'_'+ str(args.data_name)
         else : # for samsung SEM image
-            te_data_dir = f'./data/test_Samsung_SNU_patches_SET{args.set_num}.hdf5'
+            args.dataset_type = 'val'
+            te_data_dir = f'./data/{args.dataset_type}_Samsung_SNU_patches_SET{args.set_num}.hdf5'
             
-            fbi_weight_dir = f'./weights/{args.date}_FBI_Net_Grayscale_Samsung_SET1_{args.loss_function}_layers_x17_filters_x64_cropsize_256.w'
-            pge_weight_dir = f'./weights/{args.date}_PGE_Net_Grayscale_Samsung_SET1_Noise_est_cropsize_256.w'
+            fbi_weight_dir = f'./weights/{args.date}_FBI_Net_Grayscale_Samsung_SET{args.set_num}_{args.loss_function}_layers_x17_filters_x64_cropsize_256.w'
+            pge_weight_dir = f'./weights/{args.date}_PGE_Net_Grayscale_Samsung_SET{args.set_num}_Noise_est_cropsize_256.w'
 
-            save_file_name = f"{args.date}_testdata_{args.model_type}_{args.data_type}_{args.data_name}_SET{args.set_num}"
+            save_file_name = f"{args.date}_{args.dataset_type}data_{args.model_type}_{args.data_type}_{args.data_name}_SET{args.set_num}"
+            if args.use_other_target is True:
+                te_data_dir = f'./data/{args.dataset_type}_Samsung_SNU_patches_SET{args.set_num}_divided_by_fnum.hdf5'
+                if args.integrate_all_set is True:
+                    save_file_name += f"_integratedSET"
+
+                    te_data_dir = []
+                    for set_num in range(1,5):
+                        te_data_dir.append(f'./data/{args.dataset_type}_Samsung_SNU_patches_SET{set_num}_divided_by_fnum.hdf5')
+                else:
+                    save_file_name += f"_SET{args.set_num}"
+        
+                save_file_name += f'_x_as_{args.x_f_num}_y_as_{args.y_f_num}'
     
      
     print ('te data dir : ', te_data_dir)
@@ -99,10 +112,11 @@ if __name__ == '__main__':
 
     output_folder = './output_log'
     os.makedirs(output_folder,exist_ok=True)
-    f = open(f"./{output_folder}/{save_file_name}",'w')
+    f = None
     orig_stdout = sys.stdout
     orig_stderr = sys.stderr
     if args.test is False:
+        f = open(f"./{output_folder}/{save_file_name}",'w')
         sys.stderr = f
         sys.stdout = f       
 
@@ -112,4 +126,5 @@ if __name__ == '__main__':
     
     sys.stdout = orig_stdout
     sys.stderr = orig_stderr
-    f.close()   
+    if args.test is False:
+        f.close()   
