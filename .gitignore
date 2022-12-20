@@ -19,6 +19,7 @@ denoise_and_get_CD/result_data
 *.npy
 *.ipynb_checkpoints/
 *.txt
+*.csv
 *log*/*
 
 neptune_setting.py
