@@ -28,7 +28,9 @@ from core.utils import seed_everything
 from core.patch_generate import *
 parser = argparse.ArgumentParser()
 parser.add_argument('--test', action='store_true')
+parser.add_argument('--num-crop', type=int, default=500)
 parser.add_argument('--search-width', type=int, default=30)
+parser.add_argument('--specific-set', type=int, default=0)
 args = parser.parse_args()
 
 os.environ["CUDA_VISIBLE_DEVICES"]= "0,1,2,3" 
@@ -38,20 +40,18 @@ seed_everything(seed) # Seed 고정
 
 # In[3]:
 
-
-#data_path="./Samsung_SNU_1474x3010_aligned"
+#data_path = "Samsung+SNU+dataset+221115_727x1495"
 data_path = "Samsung+SNU+dataset+221115_1454x2990_aligned"
+if args.specific_set > 0 and args.specific_set < 5:
+    data_path="./Samsung_SNU_1474x3010_aligned"
 
-#crop_data_path="./Samsung_SNU_cropped"
-crop_data_path = "Samsung+SNU+dataset+221115_1454x2990_cropped"
 
-os.makedirs(crop_data_path,exist_ok=True)
 #random_crop = torchvision.transforms.RandomCrop(size=256)
 crop_size = 256
-num_crop= 500
+num_crop= args.num_crop#500
 num_cores = 16
 if args.test is True:
-    num_crop = 4
+   num_crop = 4
     
 
 
@@ -63,15 +63,18 @@ if args.test is True:
 print_lock = Lock()
 process = []
 for device_id,set_num in enumerate(sorted(os.listdir(data_path))):
+    if args.specific_set != 0:
+        if int(set_num[3:]) != args.specific_set:
+            continue
     # singale process version
     #make_dataset_per_set(data_path, set_num ,device_id)
     # make patch & split train/val/test set
-    p = Process(target=make_dataset_per_set, args=(data_path,set_num,device_id%4,print_lock,num_crop,args.test))
-    #p = Process(target=make_f_num_dataset_per_set, args=(data_path,set_num,device_id%4,print_lock,num_crop,args.test))
+    #p = Process(target=make_dataset_per_set, args=(data_path,set_num,device_id%4,print_lock,num_crop,args.test))
+    p = Process(target=make_f_num_dataset_per_set, args=(data_path,set_num,device_id%4,print_lock,num_crop,args.test))
     p.start()
     process.append(p)
-    # if args.test is True:
-    #     break
+    if args.test is True:
+        break
 for p in process:
     p.join()
     

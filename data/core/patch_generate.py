@@ -81,8 +81,8 @@ def read_image_and_crop(iter_num, image : np.array, target : np.array,
     im_t,target_im_t = image/255. , target/255.
     crop_im = im_t[top:top+crop_size,left:left+crop_size]
     crop_target_im = target_im_t[top:top+crop_size,left:left+crop_size]
-    if is_test is True:
-        print(f"{os.getpid()} is cropped",flush=True)
+    # if is_test is True:
+    #     print(f"{os.getpid()} is cropped",flush=True)
     return crop_im,crop_target_im
 
 def make_patch_of_image(image_path,data_path,set_num,device_id,num_crop=500,num_cores=16,is_test=False):
@@ -101,8 +101,8 @@ def make_patch_of_image(image_path,data_path,set_num,device_id,num_crop=500,num_
     num_iter = range(num_crop)
     with poolcontext(num_cores) as p:
         r = p.map(partial(read_image_and_crop, image=im,target=target_im, device_id=device_id,is_test=is_test),num_iter)
-        if is_test is True:
-            print(os.getpid(),len(r))
+        # if is_test is True:
+        #     print(os.getpid(),len(r))
         for index,pair in enumerate(r):
             im_cropped, target_im_cropped = pair
             #noisy_patch[index],target_patch[index] = im_cropped.cuda(device_id),target_im_cropped.cuda(device_id)
@@ -153,11 +153,14 @@ def make_dataset_per_set(data_path, set_num ,device_id,print_lock,num_crop=500,i
 
     noisy_f_num = ['F1','F2','F4','F8','F16','F32']
     for i,f_num in enumerate(noisy_f_num): # f_num 마다 구분
-        val_index, test_index = return_val_test_index(length=8)#16)
+        # val_index, test_index = return_val_test_index(length=4)#16)
+        val_index = test_index = random.randint(0,1)
         #print("======",i, f_num, set_path)
         #print("======",val_index,test_index)
         #print(set_path)
-        for image_idx, image_path in tqdm(enumerate(4*glob.glob(f"{set_path}/{f_num}*.png"))):
+        # print(val_index,test_index,glob.glob(f"{set_path}/{f_num}_*.png"))
+        # continue
+        for image_idx, image_path in enumerate(glob.glob(f"{set_path}/{f_num}_*.png")):
             noisy, target = make_patch_of_image(image_path,data_path,set_num,device_id,num_crop,num_cores,is_test)
             if is_test is True:
                 print(image_idx,image_path)
@@ -166,13 +169,15 @@ def make_dataset_per_set(data_path, set_num ,device_id,print_lock,num_crop=500,i
                 #print(f"This is val image")
                 val_noisy_patch = append_tensor(val_noisy_patch,noisy)
                 val_target_patch = append_tensor(val_target_patch,target)
-            elif image_idx == test_index:
+            if image_idx == test_index:
                 #print(f"This is test image")
                 test_noisy_patch = append_tensor(test_noisy_patch,noisy)
                 test_target_patch = append_tensor(test_target_patch,target)
             else :
-                train_noisy_patch = append_tensor(train_noisy_patch,noisy)
-                train_target_patch = append_tensor(train_target_patch,target)
+                for i in range(6):
+                    train_noisy_patch = append_tensor(train_noisy_patch,noisy)
+                    train_target_patch = append_tensor(train_target_patch,target)
+                
             noisy, target = None, None
             gc.collect()
     print_lock.acquire()
@@ -187,8 +192,10 @@ def make_dataset_per_set(data_path, set_num ,device_id,print_lock,num_crop=500,i
     print(f"{test_noisy_patch.shape} and {test_target_patch.shape}")
     print(f"max : {test_noisy_patch[0].max()}, min : {test_target_patch[0].min()}")
     print_lock.release()
+    if is_test is True:
+        print("test end")
+        return
 
-    sys.exit(-1)
     save_to_hdf5(train_noisy_patch, train_target_patch,set_num,'train')
     save_to_hdf5(val_noisy_patch, val_target_patch,set_num,'val')
     save_to_hdf5(test_noisy_patch, test_target_patch,set_num,'test')
@@ -215,8 +222,8 @@ def read_image_and_crop_for_patch(iter_num, img_path : dict,
         im_t = im/255.
         crop_im = im_t[top:top+crop_size,left:left+crop_size]
         img_dict[key] = crop_im
-    if is_test is True:
-        print(f"{os.getpid()} is cropped",flush=True)
+    # if is_test is True:
+    #     print(f"{os.getpid()} is cropped",flush=True)
     return img_dict
 def make_patch_of_f_num_image(image_path,data_path,set_num,device_id,num_crop=500,num_cores=16,is_test=False)->dict:
     img_path = {}
@@ -272,7 +279,7 @@ def save_f_num_to_hdf5(patch_for_dataset : dict, set_num :int ):
             for f_num in patch_for_dataset[dataset_type].keys():
                 f.create_dataset(f_num,patch_for_dataset[dataset_type][f_num].shape, dtype='f', data=patch_for_dataset[dataset_type][f_num])
         gc.collect()
-def make_f_num_dataset_per_set(data_path, set_num ,device_id,print_lock,num_crop=500,is_test=False):
+def make_f_num_dataset_per_set(data_path, set_num : str,device_id,print_lock,num_crop=500,is_test=False):
     num_test_image = 3
     num_cores = 16
     if is_test is True :
@@ -285,21 +292,43 @@ def make_f_num_dataset_per_set(data_path, set_num ,device_id,print_lock,num_crop
     f_num_list =  ['F1','F2','F4','F8','F16','F32','F64']
     patch_for_dataset = make_intial_patch_for_dataset(f_num_list)
     gc.collect()
-    val_index, test_index = return_val_test_index(length=16)
-    dataset_index = ['train'] * 16
+    # val_index, test_index = return_val_test_index(length=16)
+    val_index = test_index = random.randint(0,1)
+    dataset_index = ['train'] * 2
     dataset_index[val_index] = 'val'
     dataset_index[test_index] = 'test'
+    #print(dataset_index)
     #print("======",i, f_num, set_path)
     #print("======",val_index,test_index)
     #print(set_path)
+    #print(int(set_num[3:]))
     for image_idx, image_path in tqdm(enumerate(glob.glob(f"{set_path}/F64*.png"))):
         dataset_type = dataset_index[image_idx]
-        patches_dict = make_patch_of_f_num_image(image_path,data_path,set_num,device_id,num_crop,num_cores,is_test)
         if is_test is True:
-            print(image_idx,image_path)
-            print(dataset_type)
-        patch_for_dataset = append_numpy_from_dict(dataset_type,patch_for_dataset,patches_dict)
-        # sys.exit(-1)
+            print(image_idx, dataset_type)
+        if int( set_num[3:]) >= 5:
+            if dataset_type != 'train':
+                for dataset_type in ['val','test']:
+                    patches_dict = make_patch_of_f_num_image(image_path,data_path,set_num,device_id,num_crop,num_cores,is_test)
+                    if is_test is True:
+                        print(image_idx,image_path)
+                        print(dataset_type)
+                    patch_for_dataset = append_numpy_from_dict(dataset_type,patch_for_dataset,patches_dict)
+            else :
+                patches_dict = make_patch_of_f_num_image(image_path,data_path,set_num,device_id,num_crop,num_cores,is_test)
+                if is_test is True:
+                    print(image_idx,image_path)
+                    print(dataset_type)
+                patch_for_dataset = append_numpy_from_dict(dataset_type,patch_for_dataset,patches_dict)
+
+        else :
+                
+            patches_dict = make_patch_of_f_num_image(image_path,data_path,set_num,device_id,num_crop,num_cores,is_test)
+            if is_test is True:
+                print(image_idx,image_path)
+                print(dataset_type)
+            patch_for_dataset = append_numpy_from_dict(dataset_type,patch_for_dataset,patches_dict)
+       
         gc.collect()
         if is_test is True:
             SET_NUM = f"SET{device_id+1}"
@@ -312,7 +341,7 @@ def make_f_num_dataset_per_set(data_path, set_num ,device_id,print_lock,num_crop
     print_lock.release()
     save_f_num_to_hdf5(patch_for_dataset,set_num)
     #x_train, x_test, y_train, y_test = train_test_split(noisy_patch,target_patch,test_size=0.08,shuffle=True)
-    #print(x_train.shape, x_test.shape
+    #print(x_train.shape, x_test.shape)
     torch.cuda.empty_cache()
     print(f"complete {set_path}")
     

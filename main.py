@@ -48,11 +48,13 @@ if __name__ == '__main__':
                     tr_data_dir = f"./result_data/denoised_with_MSE_Affine_val_Samsung_SNU_patches_SET{args.set_num}.hdf5"
                 te_data_dir = f'./result_data/denoised_with_MSE_Affine_val_Samsung_SNU_patches_SET{args.set_num}.hdf5'
                 save_file_name += '_clean_as_MSE_Affine'
-            save_file_name = str(args.date)+ '_'+str(args.model_type)+'_' + str(args.data_type) +'_'+ str(args.data_name) 
-
+            
             if args.use_other_target is True:
                 tr_data_dir = f'./data/train_Samsung_SNU_patches_SET{args.set_num}_divided_by_fnum.hdf5'
                 te_data_dir = f'./data/val_Samsung_SNU_patches_SET{args.set_num}_divided_by_fnum.hdf5'
+                #tr_data_dir = f'./data/train_Samsung_SNU_patches_SET{args.set_num}_overlap_dataset.hdf5'
+                #te_data_dir = f'./data/val_Samsung_SNU_patches_SET{args.set_num}_overlap_dataset.hdf5'
+                
                 if args.integrate_all_set is True:
                     save_file_name += f"_integratedSET"
 
@@ -60,8 +62,7 @@ if __name__ == '__main__':
                     for set_num in range(1,5):
                         tr_data_dir.append(f'./data/train_Samsung_SNU_patches_SET{set_num}_divided_by_fnum.hdf5')
                         te_data_dir.append(f'./data/val_Samsung_SNU_patches_SET{set_num}_divided_by_fnum.hdf5')
-                else:
-                    save_file_name += f"_SET{args.set_num}"
+    
         
                 if args.model_type != 'PGE_Net':
                     save_file_name += f'_x_as_{args.x_f_num}_y_as_{args.y_f_num}'

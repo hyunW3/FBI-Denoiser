@@ -2,13 +2,13 @@
 cd ../
 
 #DATE=`date "+%y%m%d"`
-DATE="221005"
+DATE="221209"
 # Synthetic noise datasets
 DATA_TYPE='Grayscale'
 DATA_NAME='Samsung'
-GPU_NUM=`expr $1 - 1`
+GPU_NUM=`expr $1 % 4 `
 SET_NUM=$1
-echo "SET NUM : "$SET_NUM ", GPU_NUM :"${GPU_NUM}
+echo "SET NUM : "$SET_NUM ", GPU_NUM : "${GPU_NUM}
 BATCH_SIZE=1 #defualt 1
 ## batchsize 128 not work 
 # return F.conv2d(input, weight, bias, self.stride,

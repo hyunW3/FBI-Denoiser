@@ -13,12 +13,13 @@ def load_set_images(set_path : str,num_per_Ffolder : int) -> dict:
     images = dict()
     for F_number in os.listdir(set_path):
         F_path = os.path.join(set_path,F_number)
-        print(F_path)
+        #print(F_path)
         for i in range(1,num_per_Ffolder+1):
             file_name = f"{i}_{F_number}.png"
             absolute_path = os.path.join(F_path,file_name)
+            print(absolute_path)
             if not os.path.exists(absolute_path) :
-                print(f"{absolute_path}" is not exist)
+                print(f"{absolute_path} is not exist")
             else :
                 image = cv2.imread(absolute_path,cv2.IMREAD_GRAYSCALE)
                 if F_number in images :

@@ -248,7 +248,8 @@ class Train_FBI(object):
 
         print ('Epoch : ', epoch, ' Tr loss : ', round(mean_tr_loss,4), ' Te loss : ', round(mean_te_loss,4),
              ' PSNR : ', round(mean_psnr,4), ' SSIM : ', round(mean_ssim,4),' Best PSNR : ', round(self.best_psnr,4)) 
-        self.update_log(epoch,[mean_tr_loss, mean_te_loss, mean_psnr, mean_ssim])
+        if self.args.test is False:
+            self.update_log(epoch,[mean_tr_loss, mean_te_loss, mean_psnr, mean_ssim])
   
     def train(self):
         """Trains denoiser on training set."""
@@ -294,7 +295,8 @@ class Train_FBI(object):
                 self.logger.log(losses = {'loss': loss}, lr = self.optim.param_groups[0]['lr'])
 
                 tr_loss.append(loss.detach().cpu().numpy())
-
+                # if self.args.test is True:
+                #     break
             mean_tr_loss = np.mean(tr_loss)
             self._on_epoch_end(epoch+1, mean_tr_loss)    
             if self.args.nepochs == epoch +1:

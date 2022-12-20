@@ -41,8 +41,23 @@ class TrdataLoader():
                         self.clean_arr = np.concatenate((self.clean_arr,data[f'{self.args.y_f_num}']),axis=0)
 
             else:
-                self.clean_arr = self.data[f'{self.args.y_f_num}']
-                self.noisy_arr = self.data[f'{self.args.x_f_num}']
+                try:
+                    self.clean_arr = self.data[f'{self.args.y_f_num}']
+                    self.noisy_arr = self.data[f'{self.args.x_f_num}']
+                except:
+                    print("=== load from original dataset ===")
+                    if self.args.set_num >=5 :
+                        noisy_f_num = ['F1','F2','F4','F8','F16','F32']
+                    else:
+                        noisy_f_num = ['F8','F16','F32']
+                    i = noisy_f_num.index(self.args.x_f_num)*3000
+                    self.noisy_arr = self.data["noisy_images"][i:i+3000]
+                    print(f"{self.args.x_f_num} noisy image sampled from {i}~{i+3000}")
+                    self.clean_arr = self.data["clean_images"][i:i+3000]
+                    # i = noisy_f_num.index(self.args.y_f_num)*3000
+                    # self.clean_arr = self.data["clean_images"][i:i+3000]
+                    # print(f"{self.args.y_f_num} clean image sampled from {i}~{i+3000}")
+                    
         else:
             self.noisy_arr = self.data["noisy_images"]
             self.clean_arr = self.data["clean_images"]
@@ -144,8 +159,19 @@ class TedataLoader():
                         self.clean_arr = np.concatenate((self.clean_arr,data[f'{self.args.y_f_num}']),axis=0)
     
             else:
-                self.clean_arr = self.data[f'{self.args.y_f_num}']
-                self.noisy_arr = self.data[f'{self.args.x_f_num}']
+                try:
+                    self.clean_arr = self.data[f'{self.args.y_f_num}']
+                    self.noisy_arr = self.data[f'{self.args.x_f_num}']
+                except:
+                    print("=== load from original dataset ===")
+                    if self.args.set_num >=5 :
+                        noisy_f_num = ['F1','F2','F4','F8','F16','F32']
+                    else:
+                        noisy_f_num = ['F8','F16','F32']
+                    i = noisy_f_num.index(self.args.x_f_num)*3000
+                    self.noisy_arr = self.data["noisy_images"][i:i+3000]
+                    print(f"{self.args.x_f_num} noisy image sampled from {i}~{i+3000}")
+                    self.clean_arr = self.data["clean_images"][i:i+3000]
         else:
             self.clean_arr = self.data["clean_images"]
             self.noisy_arr = self.data["noisy_images"]

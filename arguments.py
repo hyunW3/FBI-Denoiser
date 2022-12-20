@@ -65,12 +65,12 @@ def get_args():
     parser.add_argument('--use-other-target', action='store_true', help='For samsung SEM image, use other noisy image as target. \
         In PGE-Net evaluation, it denotes specific f number (noisy level), not all F numbers')
     parser.add_argument('--x-f-num', default='F1', type=str, help='For samsung SEM image, set input of f-number 8,16,32,64',
-                        choices=['F8','F16','F32','F64'])
+                        choices=['F1','F2','F4','F8','F16','F32','F64'])
     parser.add_argument('--y-f-num', default='F64', type=str, help='For samsung SEM image, set target of f-number 8,16,32,64',
-                        choices=['F8','F16','F32','F64'])
+                        choices=['F1','F2','F4','F8','F16','F32','F64'])
     parser.add_argument('--integrate-all-set', action='store_true', help='For samsung SEM image, no matter what f-number is, integrate all set')
     parser.add_argument('--set-num', default=1, type=int, help='For samsung SEM image, need f-number 8,16,32,64',
-                        choices=[1,2,3,4])
+                        choices=[1,2,3,4,5,6,7,8,9,10])
     parser.add_argument('--test', action='store_true', help='For samsung SEM image, train dataset to be test dataset(small size)')
     parser.add_argument('--train-with-MSEAffine', action='store_true', help='For samsung SEM image, clean image is denoised image with MSE_AFFINE,not F64 image')
     args=parser.parse_args()
