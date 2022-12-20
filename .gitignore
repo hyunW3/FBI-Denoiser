@@ -3,6 +3,8 @@ result_data/
 weights/
 
 data/Samsung*SNU*
+denoising-fluorescence/
+env
 
 *.mat
 *.hdf5
