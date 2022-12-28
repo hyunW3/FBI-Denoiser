@@ -19,6 +19,13 @@ from skimage.metrics import structural_similarity as compare_ssim
 from sklearn.metrics import mean_squared_error
 from sklearn.feature_extraction import image
 
+import matplotlib.pyplot as plt
+from copy import deepcopy
+from scipy.ndimage import median_filter
+from skimage.metrics import *
+from skimage.metrics import peak_signal_noise_ratio as psnr
+from skimage.metrics import structural_similarity as ssim
+
 class TrdataLoader():
 
     def __init__(self, _tr_data_dir=None, _args = None):
@@ -160,8 +167,8 @@ class TedataLoader():
     
             else:
                 try:
-                    self.clean_arr = self.data[f'{self.args.y_f_num}']
                     self.noisy_arr = self.data[f'{self.args.x_f_num}']
+                    self.clean_arr = self.data[f'{self.args.y_f_num}']
                 except:
                     print("=== load from original dataset ===")
                     if self.args.set_num >=5 :
@@ -333,3 +340,22 @@ def normalize_after_gat_torch(transformed):
     transformed_sigma=torch.ones_like(transformed)*(transformed_sigma)
     return transformed, transformed_sigma, min_transform, max_transform
 
+def apply_median_filter(img : np.array ,kernel_size  : tuple = (11,11), repeat: int =3 ,plot : bool =False):
+    out = deepcopy(img)
+    if plot is True:
+        plt.title(f'before iter')
+        plt.imshow(out[:200,:200])
+        plt.pause(0.01)
+        plt.figure(figsize=(20,4))
+        plt.plot(out[50][:200])
+        plt.pause(0.01)
+    for i in range(repeat):
+        out = median_filter(out,kernel_size)
+        if plot is True:
+            plt.title(f'{i+1} iter')
+            plt.imshow(out[:200,:200])
+            plt.pause(0.01)
+            plt.figure(figsize=(20,4))
+            plt.plot(out[50][:200])
+            plt.pause(0.01)
+    return out

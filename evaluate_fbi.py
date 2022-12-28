@@ -84,25 +84,27 @@ if __name__ == '__main__':
         else : # for samsung SEM image
             args.dataset_type = 'val'
             te_data_dir = f'./data/{args.dataset_type}_Samsung_SNU_patches_SET{args.set_num}.hdf5'
-            
             fbi_weight_dir = f'./weights/{args.date}_FBI_Net_Grayscale_Samsung_SET{args.set_num}_{args.loss_function}_layers_x17_filters_x64_cropsize_256.w'
             pge_weight_dir = f'./weights/{args.date}_PGE_Net_Grayscale_Samsung_SET{args.set_num}_Noise_est_cropsize_256.w'
-
+            
+    
             save_file_name = f"{args.date}_{args.dataset_type}data_{args.model_type}_{args.data_type}_{args.data_name}_SET{args.set_num}"
             if args.use_other_target is True:
                 te_data_dir = f'./data/{args.dataset_type}_Samsung_SNU_patches_SET{args.set_num}_divided_by_fnum.hdf5'
+                fbi_weight_dir = f'./weights/{args.date}_FBI_Net_Grayscale_Samsung_SET{args.set_num}_x_as_{args.x_f_num}_y_as_{args.y_f_num}_{args.loss_function}_layers_x17_filters_x64_cropsize_256.w'
+                pge_weight_dir = f'./weights/{args.date}_PGE_Net_Grayscale_Samsung_SET{args.set_num}_{args.x_f_num}_Noise_est_cropsize_256.w'
                 if args.integrate_all_set is True:
                     save_file_name += f"_integratedSET"
 
                     te_data_dir = []
                     for set_num in range(1,5):
                         te_data_dir.append(f'./data/{args.dataset_type}_Samsung_SNU_patches_SET{set_num}_divided_by_fnum.hdf5')
-                else:
-                    save_file_name += f"_SET{args.set_num}"
         
                 save_file_name += f'_x_as_{args.x_f_num}_y_as_{args.y_f_num}'
+            else :
+                fbi_weight_dir = f'./weights/{args.date}_FBI_Net_Grayscale_Samsung_SET{args.set_num}_{args.loss_function}_layers_x17_filters_x64_cropsize_256.w'
+                pge_weight_dir = f'./weights/{args.date}_PGE_Net_Grayscale_Samsung_SET{args.set_num}_Noise_est_cropsize_256.w'
     
-     
     print ('te data dir : ', te_data_dir)
     print ('fbi weight dir : ', fbi_weight_dir)
     print ('pge weight dir : ', pge_weight_dir)

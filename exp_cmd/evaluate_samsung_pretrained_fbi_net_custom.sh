@@ -15,14 +15,7 @@ pge_net_weight_file=${DATE}"_PGE_Net_Grayscale_Samsung_SET"${SET_NUM}"_Noise_est
 # FBI-Net weight는 F8-F32 로 하고, F32 denoise : 23dB->25dB
 # FBI-Net weight는 F8-F16 로 하고, F32 denoise : 23dB->26dB
 X_F_NUM=$2 # 'F32'
-GPU=$3
 Y_F_NUM='F64'
 # CUDA_VISIBLE_DEVICES=0 python evaluate_fbi.py --use-other-target --x-f-num F8 --y-f-num F16 --date $DATE --seed 0 --noise-type 'Poisson-Gaussian' --loss-function 'MSE_Affine' --model-type 'FBI_Net' --data-type $DATA_TYPE --data-name $DATA_NAME --set-num $SET_NUM --batch-size 1 --num-layers 17 --num-filters 64 --crop-size 256 --pge-weight-dir $pge_net_weight_file 
-CUDA_VISIBLE_DEVICES=$GPU python evaluate_fbi.py  \
---use-other-target --x-f-num $X_F_NUM --y-f-num $Y_F_NUM \
---date $DATE --seed 0 --noise-type 'Poisson-Gaussian' \
---loss-function 'MSE_Affine' --model-type 'FBI_Net' \
---data-type $DATA_TYPE --data-name $DATA_NAME \
---set-num $SET_NUM --batch-size 1 --num-layers 17 --num-filters 64 --crop-size 256 \
---pge-weight-dir $pge_net_weight_file 
+CUDA_VISIBLE_DEVICES=3 python evaluate_fbi_custom.py --test --use-other-target --x-f-num $X_F_NUM --y-f-num $Y_F_NUM --date $DATE --seed 0 --noise-type 'Poisson-Gaussian' --loss-function 'MSE_Affine' --model-type 'FBI_Net' --data-type $DATA_TYPE --data-name $DATA_NAME --set-num $SET_NUM --batch-size 1 --num-layers 17 --num-filters 64 --crop-size 256 --pge-weight-dir $pge_net_weight_file 
 # CUDA_VISIBLE_DEVICES=2 python evaluate_fbi.py --use-other-target --x-f-num F32 --y-f-num F64 --date $DATE --seed 0 --noise-type 'Poisson-Gaussian' --loss-function 'MSE_Affine' --model-type 'FBI_Net' --data-type $DATA_TYPE --data-name $DATA_NAME --set-num $SET_NUM --batch-size 1 --num-layers 17 --num-filters 64 --crop-size 256 --pge-weight-dir $pge_net_weight_file 

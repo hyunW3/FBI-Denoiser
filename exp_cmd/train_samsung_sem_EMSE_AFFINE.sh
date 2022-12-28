@@ -20,4 +20,8 @@ if [ ! -f $pge_net_weight_path  ]; then
     CUDA_VISIBLE_DEVICES=$GPU_NUM python main.py --date $DATE --seed 0 --noise-type 'Poisson-Gaussian' --loss-function 'Noise_est' --model-type 'PGE_Net' --data-type $DATA_TYPE --data-name $DATA_NAME --set-num $SET_NUM --alpha $ALPHA --beta $BETA --batch-size 1 --lr 0.0001 --crop-size 256
 fi
 echo "=== EMSE_AFFINE === SET"${SET_NUM}
-CUDA_VISIBLE_DEVICES=$GPU_NUM python main.py --date $DATE --seed 0 --noise-type 'Poisson-Gaussian' --loss-function 'EMSE_Affine' --model-type 'FBI_Net' --data-type $DATA_TYPE --data-name $DATA_NAME --set-num $SET_NUM --alpha $ALPHA --beta $BETA --batch-size 1 --lr 0.001 --num-layers 17 --num-filters 64 --crop-size 256 --pge-weight-dir $pge_net_weight_file
+CUDA_VISIBLE_DEVICES=$GPU_NUM python main.py --date $DATE --seed 0 \
+    --noise-type 'Poisson-Gaussian' --loss-function 'EMSE_Affine' --model-type 'FBI_Net' \
+    --data-type $DATA_TYPE --data-name $DATA_NAME --set-num $SET_NUM --alpha $ALPHA --beta $BETA \
+    --batch-size 1 --lr 0.001 --num-layers 17 --num-filters 64 --crop-size 256 \
+    --pge-weight-dir $pge_net_weight_file
