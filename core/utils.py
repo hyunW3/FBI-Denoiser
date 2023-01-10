@@ -15,7 +15,6 @@ import torch
 from torch.autograd import Variable
 import math
 #from skimage import measure # measure.compare_ssim is deprecated after 0.19
-from skimage.metrics import structural_similarity as compare_ssim
 from sklearn.metrics import mean_squared_error
 from sklearn.feature_extraction import image
 
@@ -23,8 +22,8 @@ import matplotlib.pyplot as plt
 from copy import deepcopy
 from scipy.ndimage import median_filter
 from skimage.metrics import *
-from skimage.metrics import peak_signal_noise_ratio as psnr
-from skimage.metrics import structural_similarity as ssim
+from skimage.metrics import peak_signal_noise_ratio as compare_psnr
+from skimage.metrics import structural_similarity as compare_ssim
 
 class TrdataLoader():
 
@@ -32,7 +31,7 @@ class TrdataLoader():
 
         self.tr_data_dir = _tr_data_dir
         self.args = _args
-        if  self.args.integrate_all_set is False:
+        if self.args.integrate_all_set is False or self.args.use_other_target is False:
             self.data = h5py.File(self.tr_data_dir, "r")
         self.noisy_arr, self.clean_arr = None, None
         
@@ -64,6 +63,33 @@ class TrdataLoader():
                     # i = noisy_f_num.index(self.args.y_f_num)*3000
                     # self.clean_arr = self.data["clean_images"][i:i+3000]
                     # print(f"{self.args.y_f_num} clean image sampled from {i}~{i+3000}")
+        elif self.args.integrate_all_set is True:
+            if self.args.individual_noisy_input is True:
+                img_len = min(self.data[self.args.x_f_num].shape[0],self.data[self.args.y_f_num].shape[0])
+                self.noisy_arr = self.data[self.args.x_f_num][:img_len]
+                self.clean_arr = self.data[self.args.y_f_num][:img_len]
+                print(f'===Tr loader {self.args.x_f_num} vs {self.args.y_f_num}===')
+                print(f'{self.noisy_arr.shape[0]}/{self.clean_arr.shape[0]}  images are loaded')
+            else :
+                noisy_f_num_list = ['F01','F02','F04','F08','F16','F32']
+                img_len = min(self.data[noisy_f_num].shape[0] for noisy_f_num in noisy_f_num_list)
+                img_len = 100
+                num_sampling = 1000
+                
+                for noisy_f_num in noisy_f_num_list:
+                    for start_idx in range(0,len(self.data[noisy_f_num]),num_sampling):
+                        
+                        if self.noisy_arr is None:
+                            self.noisy_arr = self.data[noisy_f_num][start_idx:start_idx+img_len]
+                            # img_len = self.noisy_arr.shape[0]
+                            self.clean_arr = self.data[self.args.y_f_num][start_idx:start_idx+img_len]
+                        else:
+                            self.noisy_arr = np.concatenate((self.noisy_arr,self.data[noisy_f_num][start_idx:start_idx+img_len]),axis=0)
+                            # img_len = self.data[noisy_f_num].shape[0]
+                            self.clean_arr = np.concatenate((self.clean_arr,self.data[self.args.y_f_num][start_idx:start_idx+img_len]),axis=0)
+                    
+                    print('===Tr loader ',noisy_f_num,'===')
+                    print(f'{self.noisy_arr.shape[0]}/{self.clean_arr.shape[0]}  images are loaded')
                     
         else:
             self.noisy_arr = self.data["noisy_images"]
@@ -149,7 +175,7 @@ class TedataLoader():
         self.args = args
         if 'SIDD' in self.te_data_dir or 'DND' in self.te_data_dir or 'CF' in self.te_data_dir or 'TP' in self.te_data_dir:
             self.data = sio.loadmat(self.te_data_dir)
-        elif  self.args.integrate_all_set is False:
+        elif self.args.integrate_all_set is False or self.args.use_other_target is False:
             self.data = h5py.File(self.te_data_dir, "r")
     
         self.noisy_arr, self.clean_arr = None, None
@@ -179,6 +205,40 @@ class TedataLoader():
                     self.noisy_arr = self.data["noisy_images"][i:i+3000]
                     print(f"{self.args.x_f_num} noisy image sampled from {i}~{i+3000}")
                     self.clean_arr = self.data["clean_images"][i:i+3000]
+        elif self.args.integrate_all_set is True:
+            if self.args.individual_noisy_input is True:
+                # img_len = min(self.data[self.args.x_f_num].shape[0],self.data[self.args.y_f_num].shape[0])
+                min_len = min(self.data[self.args.x_f_num].shape[0],self.data[self.args.y_f_num].shape[0])
+                img_len = 200
+                num_sampling = 1000
+                # self.noisy_arr = self.data[self.args.x_f_num][:img_len]
+                # self.clean_arr = self.data[self.args.y_f_num][:img_len]
+                for start_idx in range(0,min_len,num_sampling):
+                    if self.noisy_arr is None:
+                        self.noisy_arr = self.data[self.args.x_f_num][start_idx:start_idx+img_len]
+                        # img_len = self.noisy_arr.shape[0]
+                        self.clean_arr = self.data[self.args.y_f_num][start_idx:start_idx+img_len]
+                    else:
+                        self.noisy_arr = np.concatenate((self.noisy_arr,self.data[self.args.x_f_num][start_idx:start_idx+img_len]),axis=0)
+                        self.clean_arr = np.concatenate((self.clean_arr,self.data[self.args.y_f_num][start_idx:start_idx+img_len]),axis=0)
+                print(f'===Te loader {self.args.x_f_num} vs {self.args.y_f_num}===')
+                print(f'{self.noisy_arr.shape[0]}/{self.clean_arr.shape[0]}  images are loaded')
+            else :
+                noisy_f_num_list = ['F01','F02','F04','F08','F16','F32']
+                img_len = 100
+                num_sampling = 1000
+                for noisy_f_num in noisy_f_num_list:
+                    for start_idx in range(0,len(self.data[noisy_f_num]),num_sampling):
+                        if self.noisy_arr is None:
+                            self.noisy_arr = self.data[noisy_f_num][start_idx:start_idx+img_len]
+                            # img_len = self.noisy_arr.shape[0]
+                            self.clean_arr = self.data[self.args.y_f_num][start_idx:start_idx+img_len]
+                        else:
+                            self.noisy_arr = np.concatenate((self.noisy_arr,self.data[noisy_f_num][start_idx:start_idx+img_len]),axis=0)
+                            # img_len = self.data[noisy_f_num].shape[0]
+                            self.clean_arr = np.concatenate((self.clean_arr,self.data[self.args.y_f_num][start_idx:start_idx+img_len]),axis=0)
+                    print('===Te loader',noisy_f_num,'===')
+                    print(f'{self.noisy_arr.shape[0]}/{self.clean_arr.shape[0]}  images are loaded')
         else:
             self.clean_arr = self.data["clean_images"]
             self.noisy_arr = self.data["noisy_images"]
@@ -216,13 +276,10 @@ def get_PSNR(X, X_hat):
     return test_PSNR
 
 def get_SSIM(X, X_hat,data_type):
-
-    #print("get ssim : ",X.shape, X_hat.shape,data_type)
     
     ch_axis = 0
     #test_SSIM = measure.compare_ssim(np.transpose(X, (1,2,0)), np.transpose(X_hat, (1,2,0)), data_range=X.max() - X.min(), multichannel=multichannel)
-    test_SSIM = compare_ssim(X, X_hat, data_range=X.max() - X.min(), channel_axis=ch_axis)
-
+    test_SSIM = compare_ssim(X, X_hat, data_range=1.0, channel_axis=ch_axis)
     return test_SSIM
 
 

@@ -4,13 +4,18 @@ import random
 import numpy as np
 from contextlib import contextmanager
 from torch.multiprocessing import Pool
+from skimages.metrics import peak_signal_noise_ratio, structural_similarity
 
 @contextmanager
 def poolcontext(*args, **kwargs):
     pool = Pool(*args, **kwargs)
     yield pool
     pool.terminate()
-    
+def get_metric(ref_img,img):
+    psnr = peak_signal_noise_ratio(ref_img,img,data_range=1.0)
+    ssim = structural_similarity(ref_img,img,data_range=1.0)
+    return {'PSNR' : psnr, 'SSIM': ssim}
+
 def convert_size(size_bytes):
     import math
     if size_bytes == 0:

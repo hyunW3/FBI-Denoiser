@@ -68,7 +68,17 @@ if __name__ == '__main__':
                     save_file_name += f'_x_as_{args.x_f_num}_y_as_{args.y_f_num}'
                 else:
                     save_file_name += f'_{args.x_f_num}'        
-        
+            elif args.integrate_all_set is True:
+                if args.individual_noisy_input is True :
+                    save_file_name += f"_integratedSET1~10_individual_x_as_{args.x_f_num}"
+                    if args.y_f_num != 'F64':
+                        save_file_name += f"_y_as_{args.y_f_num}"
+                else :
+                    save_file_name += f"_integratedSET1~10_mixed"
+
+                tr_data_dir = f'./data/train_Samsung_SNU_patches_whole_set10to01_divided_by_fnum.hdf5'
+                te_data_dir = f'./data/val_Samsung_SNU_patches_whole_set10to01_divided_by_fnum.hdf5'
+
         print ('tr data dir : ', tr_data_dir)
         print ('te data dir : ', te_data_dir)
         

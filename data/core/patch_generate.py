@@ -153,8 +153,8 @@ def make_dataset_per_set(data_path, set_num ,device_id,print_lock,num_crop=500,i
 
     noisy_f_num = ['F1','F2','F4','F8','F16','F32']
     for i,f_num in enumerate(noisy_f_num): # f_num 마다 구분
-        # val_index, test_index = return_val_test_index(length=4)#16)
-        val_index = test_index = random.randint(0,1)
+        val_index, test_index = return_val_test_index(length=16)
+        #val_index = test_index = random.randint(0,1)
         #print("======",i, f_num, set_path)
         #print("======",val_index,test_index)
         #print(set_path)
@@ -207,8 +207,7 @@ def make_dataset_per_set(data_path, set_num ,device_id,print_lock,num_crop=500,i
     
 ## TODO 
 
-def read_image_and_crop_for_patch(iter_num, img_path : dict,
-                        device_id : int, crop_size = 256, is_test=False)-> dict: #, return_list, lock):
+def read_image_and_crop_for_patch(iter_num, img_path : dict, crop_size = 256, is_test=False)-> dict: #, return_list, lock):
     image = cv2.imread(img_path['F64'],cv2.IMREAD_GRAYSCALE)
     top = random.randrange(0,image.shape[0]-crop_size)
     left = random.randrange(0,image.shape[1]-crop_size)
@@ -225,22 +224,23 @@ def read_image_and_crop_for_patch(iter_num, img_path : dict,
     # if is_test is True:
     #     print(f"{os.getpid()} is cropped",flush=True)
     return img_dict
-def make_patch_of_f_num_image(image_path,data_path,set_num,device_id,num_crop=500,num_cores=16,is_test=False)->dict:
+def make_patch_of_f_num_image(image_path,data_path,set_num,noisy_f_num = ['F1','F2','F4','F8','F16','F32'] ,num_crop=500,num_cores=16,is_test=False)->dict:
     img_path = {}
     patches_dict = {}
-    image_num = image_path.split("_")[-1]
+    image_num = image_path.split("F64_")[-1]
+    # print(image_num)
     img_path['F64'] = image_path
     patches_dict['F64'] = np.ones((num_crop,256,256))
     
     # noisy_f_num = ['F8','F16','F32']
-    noisy_f_num = ['F1','F2','F4','F8','F16','F32']
+    
     for f_num in noisy_f_num:
         img_path[f'{f_num}'] = os.path.join(data_path,set_num,f"{f_num}_{image_num}")
         patches_dict[f'{f_num}'] = np.ones((num_crop,256,256))    
     
     num_iter = range(num_crop)
     with poolcontext(num_cores) as p:
-        r = p.map(partial(read_image_and_crop_for_patch,img_path=img_path, device_id=device_id,is_test=is_test),num_iter)
+        r = p.map(partial(read_image_and_crop_for_patch,img_path=img_path,is_test=is_test),num_iter)
         if is_test is True:
             print(os.getpid(),len(r))
         for index,img_dict in enumerate(r):
@@ -257,7 +257,7 @@ def append_numpy_from_dict(dataset_type : str, n_arr: np.array, p_dict : dict) -
         if n_arr[key][f_num] is None:
             n_arr[key][f_num] = arr
         else :
-            n_arr[key][f_num] = np.concatenate((n_arr[key][f_num],arr), axis=0)
+            n_arr[key][f_num] = np.concatenate((arr,n_arr[key][f_num]), axis=0)
     return n_arr
 def make_intial_patch_for_dataset(f_num_list = ['F8','F16','F32','F64']):
     patches = dict()
@@ -309,13 +309,13 @@ def make_f_num_dataset_per_set(data_path, set_num : str,device_id,print_lock,num
         if int( set_num[3:]) >= 5:
             if dataset_type != 'train':
                 for dataset_type in ['val','test']:
-                    patches_dict = make_patch_of_f_num_image(image_path,data_path,set_num,device_id,num_crop,num_cores,is_test)
+                    patches_dict = make_patch_of_f_num_image(image_path,data_path,set_num,f_num_list,num_crop,num_cores,is_test)
                     if is_test is True:
                         print(image_idx,image_path)
                         print(dataset_type)
                     patch_for_dataset = append_numpy_from_dict(dataset_type,patch_for_dataset,patches_dict)
             else :
-                patches_dict = make_patch_of_f_num_image(image_path,data_path,set_num,device_id,num_crop,num_cores,is_test)
+                patches_dict = make_patch_of_f_num_image(image_path,data_path,set_num,f_num_list_id,num_crop,num_cores,is_test)
                 if is_test is True:
                     print(image_idx,image_path)
                     print(dataset_type)
@@ -323,7 +323,7 @@ def make_f_num_dataset_per_set(data_path, set_num : str,device_id,print_lock,num
 
         else :
                 
-            patches_dict = make_patch_of_f_num_image(image_path,data_path,set_num,device_id,num_crop,num_cores,is_test)
+            patches_dict = make_patch_of_f_num_image(image_path,data_path,set_num,f_num_list,num_crop,num_cores,is_test)
             if is_test is True:
                 print(image_idx,image_path)
                 print(dataset_type)
