@@ -4,7 +4,7 @@ import random
 import numpy as np
 from contextlib import contextmanager
 from torch.multiprocessing import Pool
-from skimages.metrics import peak_signal_noise_ratio, structural_similarity
+from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 
 @contextmanager
 def poolcontext(*args, **kwargs):

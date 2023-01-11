@@ -23,19 +23,28 @@ if __name__ == '__main__':
     if args.noise_type == 'Poisson-Gaussian':
         
         if args.data_type == 'RawRGB' and args.data_name == 'fivek' and args.alpha == 0 and args.beta == 0:
-            
-            te_data_dir = './data/test_fivek_rawRGB_random_noise.hdf5'
+            if args.test_alpha != 0 or args.test_beta != 0:
+                te_data_dir = './data/test_fivek_rawRGB_alpha_'+str(args.test_alpha)+'_beta_'+str(args.test_beta)+'.hdf5'
+                save_file_name = str(args.date)+ '_'+str(args.model_type)+'_' + str(args.data_type) +'_' + 'random_noise'
+                save_file_name = f"{args.date}_{args.model_type}_{args.data_type}_trainon_random_noise_teston_alpha_{args.test_alpha}_beta_{args.test_beta}"
+            else :
+                te_data_dir = './data/test_fivek_rawRGB_random_noise.hdf5'
+                save_file_name = str(args.date)+ '_'+str(args.model_type)+'_' + str(args.data_type) +'_' + 'random_noise'
             pge_weight_dir = './weights/211127_PGE_Net_RawRGB_random_noise_cropsize_200.w'
             
-            save_file_name = str(args.date)+ '_'+str(args.model_type)+'_' + str(args.data_type) +'_' + 'random_noise'
+            
         
         elif args.data_type == 'RawRGB' and args.data_name == 'fivek' and args.alpha != 0 and args.beta != 0:
+            if args.test_alpha != 0 or args.test_beta != 0:
+                te_data_dir = './data/test_fivek_rawRGB_alpha_'+str(args.test_alpha)+'_beta_'+str(args.test_beta)+'.hdf5'
+                save_file_name = f"{args.date}_{args.model_type}_{args.data_type}_trainon_alpha_{args.alpha}_beta_{args.beta}_teston_alpha_{args.test_alpha}_beta_{args.test_beta}"
+            else :
+                te_data_dir = './data/test_fivek_rawRGB_alpha_'+str(args.alpha)+'_beta_'+str(args.beta)+'.hdf5'
+                save_file_name = f"{args.date}_{args.model_type}_{args.data_type}_trainon_alpha_{args.alpha}_beta_{args.beta}"
             
-            te_data_dir = './data/test_fivek_rawRGB_alpha_'+str(args.alpha)+'_beta_'+str(args.beta)+'.hdf5'
             pge_weight_dir = './weights/211127_PGE_Net_RawRGB_fivek_alpha_'+str(args.alpha)+'_beta_'+str(args.beta)+'_cropsize_200.w'
             
-            save_file_name = str(args.date)+ '_'+str(args.model_type)+'_' + str(args.data_type) +'_'+ str(args.data_name)+ '_alpha_' + str(args.alpha) + '_beta_' + str(args.beta)
-        
+            
         elif args.data_type == 'RawRGB' and args.data_name == 'SIDD':
             
             te_data_dir = './data/test_SIDD.mat'
