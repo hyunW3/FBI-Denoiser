@@ -12,6 +12,8 @@ def get_args():
     parser.add_argument('--loss-function', default='Estimated_Affine', type=str, required=False,
                         choices=['MSE', 'N2V', 'MSE_Affine', 'Noise_est', 'EMSE_Affine'],
                         help='(default=%(default)s)')
+    parser.add_argument('--vst-version', default='MSE', type=str, required=False,
+                        choices=['MSE', 'MAE'])
     parser.add_argument('--model-type', default='final', type=str, required=False,
                         choices=['case1',
                                  'case2',
@@ -50,7 +52,16 @@ def get_args():
     
     parser.add_argument('--alpha', default=0.01, type=float, help='(default=%(default)f)')
     parser.add_argument('--beta', default=0.02, type=float, help='(default=%(default)f)')
-    
+    parser.add_argument('--test-alpha', default=0, type=float, help='(default=%(default)f)')
+    parser.add_argument('--test-beta', default=0, type=float, help='(default=%(default)f)')
+
+    parser.add_argument('--train-set', type=str, nargs="+", help='To specify train set')
+    parser.add_argument('--test-wholedataset', action='store_true', help='To test on wholedataset')
+    parser.add_argument('--wholedataset-version', default='v1', type=str, 
+                            choices = ['v1', 'v2'],
+                            help='Select wholedataset version \
+                            v1 : SET01~SET04, v2 : SET05~SET10(default=%(default)f)')
+
     parser.add_argument('--num-layers', default=8, type=int, help='(default=%(default)f)')
     parser.add_argument('--num-filters', default=64, type=int, help='(default=%(default)f)')
     parser.add_argument('--mul', default=1, type=int, help='(default=%(default)f)')
@@ -77,6 +88,17 @@ def get_args():
     parser.add_argument('--test', action='store_true', help='For samsung SEM image, train dataset to be test dataset(small size)')
     parser.add_argument('--train-with-MSEAffine', action='store_true', help='For samsung SEM image, clean image is denoised image with MSE_AFFINE,not F64 image')
     args=parser.parse_args()
+    
+    if args.train_set is not None:
+        args.train_set = sorted(args.train_set, key=lambda x : int(x))
+        args.train_set_str = "".join(args.train_set)
+        args.train_set = list(map(lambda x : int(x), args.train_set))
+        if args.wholedataset_version == 'v1' :
+            possible_set = [1,2,3,4]
+        else :
+            possible_set = [5,6,7,8,9,10]
+        if not set(args.train_set).issubset(possible_set) :
+            raise ValueError("train set should be in {}".format(possible_set))
     return args
 
 

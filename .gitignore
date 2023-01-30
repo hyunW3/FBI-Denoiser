@@ -8,7 +8,10 @@ data/*.mat
 data/Samsung_SNU*
 data/Samsung+SNU*
 data/output_bm3d/
+data/*_dataset
+data/tmp
 
+denoising-fluorescence/
 denoise_and_get_CD/segmenetation_img
 denoise_and_get_CD/result_data
 

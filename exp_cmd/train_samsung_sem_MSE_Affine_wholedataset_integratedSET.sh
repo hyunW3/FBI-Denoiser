@@ -1,30 +1,77 @@
 #! /bin/bash
 cd ../
 
-#DATE=`date "+%y%m%d"`
-DATE="221230"
+SHORT=d:,g:,v:,tr:,h
+LONG=date:,gpu:,dataset-version:,train-set:,help
+help()
+{
+    echo "Usage: $0 [-d][--date] [-g|--gpu GPU_NUM] [--ver|--dataset-version v1 or v2] [-- TRAIN=SET] [-h|--help]"
+    echo "  -d, --date DATE: DATE"
+    echo "  -g, --gpu GPU_NUM: GPU number"
+    echo "  -v --dataset-version: dataset version"
+    echo "  --              : TRAIN_SET"
+    echo "  -h, --help: print help"
+    exit 0
+}
+OPTS=$(getopt -a -n train_sem --options $SHORT --longoptions $LONG -- "$@" )
+echo $OPTS
+
+eval set -- "$OPTS"
+echo $OPTARG
+VALID_ARGUMENTS=$# # Returns the count of arguments that are in short or long options
+
+if [ "$VALID_ARGUMENTS" -eq 1 ]; then
+  help
+fi
+while :
+do
+  case "$1" in
+    -d | --date )
+      DATE="$2"
+      shift 2
+      ;;
+    -g | --gpu )
+      GPU_NUM="$2"
+      shift 2
+      ;;
+    -v | --dataset-version )
+      DATASET_VERSION="$2"
+      shift 2
+      ;;
+    -h | --help)
+      echo "This is a test different trainset script"
+      help
+      exit 2
+      ;;
+    --)
+      TRAIN_SET="${@:2}"
+      shift;
+      break
+      ;;
+    *)
+      echo "Unexpected option: $1"
+      help
+      ;;
+  esac
+done
+
 # Synthetic noise datasets
 DATA_TYPE='Grayscale'
 DATA_NAME='Samsung'
-GPU_NUM=`expr $1 % 4`
-# X_F_NUM=$2
-# Y_F_NUM=$3
-echo "Integrated SET GPU_NUM :"${GPU_NUM}
-# echo "X_F_NUM : F"$X_F_NUM ", Y_F_NUM : F"${Y_F_NUM}
-BATCH_SIZE=4 #defualt 1
-## batchsize 128 not work 
-# return F.conv2d(input, weight, bias, self.stride,
-# RuntimeError: Given groups=1, weight of size [64, 1, 3, 3], expected input[1, 128, 256, 256] to have 1 channels, but got 128 channels instead
+echo "DATE : ${DATE} Integrated SET GPU_NUM :"${GPU_NUM}
+echo "DATASET-VER :"${DATASET_VERSION}" TRAIN_SET : "${TRAIN_SET}
+
+BATCH_SIZE=1
 
 # ALPHA == 0, BETA == 0 : Mixture Noise
 ALPHA=0.0
 BETA=0.0 # == sigma of Poisson Gaussian noise
 # noise estimation
 
-
 echo "=== Train FBI with MSE_AFFINE === integrated SET"
 CUDA_VISIBLE_DEVICES=$GPU_NUM python main.py --nepochs 30 \
-    --integrate-all-set \
+    --integrate-all-set --test-wholedataset \
+    --train-set $TRAIN_SET --wholedataset-version $DATASET_VERSION \
     --date $DATE --seed 0 --noise-type 'Poisson-Gaussian' --loss-function 'MSE_Affine' \
     --model-type 'FBI_Net' --data-type $DATA_TYPE --data-name $DATA_NAME \
     --alpha $ALPHA --beta $BETA --batch-size $BATCH_SIZE --lr 0.001 --num-layers 17 \

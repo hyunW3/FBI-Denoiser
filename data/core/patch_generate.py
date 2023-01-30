@@ -8,13 +8,15 @@ import os,sys, glob
 from tqdm import tqdm
 import numpy as np
 import PIL
-import random
 from PIL import Image
+import random
 import gc
 import h5py
 from sklearn.model_selection import train_test_split
 from typing import Generator
 from core.utils import seed_everything,poolcontext
+# from torch.multiprocessing import *
+import parmap 
 from functools import partial
 
 
@@ -228,29 +230,35 @@ def read_image_and_crop_for_patch(iter_num, img_path : dict, crop_size = 256, is
     # if is_test is True:
     #     print(f"{os.getpid()} is cropped",flush=True)
     return img_dict
+def make_patch_parallel(partial_func,num_crop,noisy_f_num,num_cores=16,is_test=False):
+    patches_dict = {}
+    patches_dict['F64'] = np.ones((num_crop,256,256))
+    for f_num in noisy_f_num:
+        patches_dict[f'{f_num}'] = np.ones((num_crop,256,256)) 
+    num_iter = range(num_crop)
+    # with poolcontext(num_cores) as p:
+    #     r = p.map(partial_func,num_iter)
+    
+    r = parmap.map(partial_func,num_iter,pm_pbar=True, pm_processes=num_cores)
+
+    if is_test is True:
+        print(os.getpid(),len(r))
+    for index,img_dict in enumerate(r):
+        for key,crop_im in img_dict.items():
+            patches_dict[key][index] = crop_im
+    return patches_dict
 def make_patch_of_f_num_image(image_path,data_path,set_num,noisy_f_num = ['F1','F2','F4','F8','F16','F32'] ,num_crop=500,num_cores=16,is_test=False)->dict:
     img_path = {}
-    patches_dict = {}
     image_num = image_path.split("F64_")[-1]
     # print(image_num)
     img_path['F64'] = image_path
-    patches_dict['F64'] = np.ones((num_crop,256,256))
-    
     # noisy_f_num = ['F8','F16','F32']
     
     for f_num in noisy_f_num:
         img_path[f'{f_num}'] = os.path.join(data_path,set_num,f"{f_num}_{image_num}")
-        patches_dict[f'{f_num}'] = np.ones((num_crop,256,256))    
     
-    num_iter = range(num_crop)
-    with poolcontext(num_cores) as p:
-        r = p.map(partial(read_image_and_crop_for_patch,img_path=img_path,is_test=is_test),num_iter)
-        if is_test is True:
-            print(os.getpid(),len(r))
-        for index,img_dict in enumerate(r):
-            for key,crop_im in img_dict.items():
-                #print(patches_dict[key].shape)
-                patches_dict[key][index] = crop_im
+    partial_func = partial(read_image_and_crop_for_patch,img_path=img_path,is_test=is_test)
+    patches_dict = make_patch_parallel(partial_func,num_crop,noisy_f_num,num_cores,is_test)
     # print(patches_dict.keys())
     return patches_dict #{'f8' : , 'f16' : 'f32' : 'f64' : }
 
@@ -283,10 +291,11 @@ def make_intial_patch_for_dataset(f_num_list = ['F8','F16','F32','F64'],val_off 
         for f_num in f_num_list:
             patches[dataset_type][f_num] = None
     return patches
-def make_intial_patch_for_whole_dataset(f_num_list = ['F01','F02','F04','F08','F16','F32','F64'],val_off = False):
+def make_intial_patch_for_whole_dataset(set_num_list = ['SET01', 'SET02', 'SET03', 'SET04', 'SET05', 'SET06', 'SET07', 'SET08', 'SET09', 'SET10'],
+                                        f_num_list = ['F01','F02','F04','F08','F16','F32','F64'],val_off = False):
     patches = dict()
     dataset_types = ['train', 'val', 'test']
-    set_num_list = ['SET01', 'SET02', 'SET03', 'SET04', 'SET05', 'SET06', 'SET07', 'SET08', 'SET09', 'SET10']
+    
     if val_off is True:
         dataset_types = ['train', 'test']
     
@@ -306,34 +315,72 @@ def make_intial_patch_for_whole_dataset(f_num_list = ['F01','F02','F04','F08','F
     #             print(f_num)
     return patches
 
-def save_f_num_to_hdf5(patch_for_dataset : dict, set_num :int ):
+def save_f_num_to_hdf5(patch_for_dataset : dict, set_num :int,mode = 'a' ):
     """
     Save the dataset to hdf5 file
     """
     for dataset_type in patch_for_dataset.keys():
-        with h5py.File(f"{dataset_type}_Samsung_SNU_patches_{set_num}_divided_by_fnum.hdf5","w") as f:
+        with h5py.File(f"{dataset_type}_Samsung_SNU_patches_{set_num}_divided_by_fnum.hdf5",mode) as f:
             for f_num in patch_for_dataset[dataset_type].keys():
                 f.create_dataset(f_num,patch_for_dataset[dataset_type][f_num].shape, dtype='f', data=patch_for_dataset[dataset_type][f_num])
         gc.collect()
-def save_whole_dataset_to_hdf5(patch_for_dataset : dict,test = False):
+def init_dataset(patch_for_dataset : dict,save_filename_ori : str):
+    for dataset_type in patch_for_dataset.keys():
+        print("init_dataset",dataset_type)
+        save_filename = f"{dataset_type}_{save_filename_ori}.hdf5" 
+        
+        with h5py.File(save_filename,"w") as f:
+            for set_num in patch_for_dataset[dataset_type].keys():
+                f.create_group(set_num)
+                for f_num in patch_for_dataset[dataset_type][set_num].keys():
+                   f[set_num].create_dataset(f_num,shape=(0,256,256),dtype='f',maxshape=(None, 256,256)) 
+def save_partial_dataset_to_hdf5(patch_for_dataset : dict,save_filename_ori : str,test = False):
     """
     Save the dataset to hdf5 file
     """
     for dataset_type in patch_for_dataset.keys():
-        with h5py.File(f"{dataset_type}_Samsung_SNU_patches_whole_set10to1_divided_by_fnum_setnum.hdf5","w") as f:
+        save_filename = f"{dataset_type}_{save_filename_ori}.hdf5"
+        # with h5py.File(save_filename,"w") as f:
+        #     pass
+        for set_num in patch_for_dataset[dataset_type].keys():
+            
+            for f_num in patch_for_dataset[dataset_type][set_num].keys():
+                print(dataset_type ,set_num,f_num)
+                try:
+                    print(patch_for_dataset[dataset_type][set_num][f_num].shape)
+                    if test is False :
+                        with h5py.File(save_filename,"a") as f:
+                            
+                            new_length = f[set_num][f_num].shape[0] + patch_for_dataset[dataset_type][set_num][f_num].shape[0]
+                            f[set_num][f_num].resize((new_length,256,256 ))
+                            f[set_num][f_num][-patch_for_dataset[dataset_type][set_num][f_num].shape[0]:] = patch_for_dataset[dataset_type][set_num][f_num]
+                                
+                except Exception as e:
+                    print(e)
+                    with h5py.File(save_filename,"a") as f:
+                        print(f[set_num][f_num].shape)
+                    sys.exit(-1)
+def save_whole_dataset_to_hdf5(patch_for_dataset : dict,save_filename_ori : str, test = False):
+    """
+    Save the dataset to hdf5 file
+    """
+    for dataset_type in patch_for_dataset.keys():
+        save_filename = f"{dataset_type}_{save_filename_ori}.hdf5" 
+        with h5py.File(save_filename,"w") as f:
             pass
         for set_num in patch_for_dataset[dataset_type].keys():
-            with h5py.File(f"{dataset_type}_Samsung_SNU_patches_whole_set10to1_divided_by_fnum_setnum.hdf5","a") as f:
+            with h5py.File(save_filename,"a") as f:
                 f.create_group(set_num)
             for f_num in patch_for_dataset[dataset_type][set_num].keys():
                 print(dataset_type ,set_num,f_num)
                 try:
                     print(patch_for_dataset[dataset_type][set_num][f_num].shape)
-                except:
-                    print("empty")
-                if test is False :
-                    with h5py.File(f"{dataset_type}_Samsung_SNU_patches_whole_set10to1_divided_by_fnum_setnum.hdf5","a") as f:
-                        f[set_num].create_dataset(f_num, patch_for_dataset[dataset_type][set_num][f_num].shape, dtype='f', data=patch_for_dataset[dataset_type][set_num][f_num])
+                    if test is False :
+                        with h5py.File(save_filename,"a") as f:
+                            f[set_num].create_dataset(f_num, patch_for_dataset[dataset_type][set_num][f_num].shape, dtype='f', data=patch_for_dataset[dataset_type][set_num][f_num])
+                except Exception as e:
+                    print(e)
+                
 def make_f_num_dataset_per_set(data_path, set_num : str,device_id,print_lock,num_crop=500,is_test=False):
     num_test_image = 3
     num_cores = 16
@@ -370,7 +417,7 @@ def make_f_num_dataset_per_set(data_path, set_num : str,device_id,print_lock,num
                         print(dataset_type)
                     patch_for_dataset = append_numpy_from_dict(dataset_type,patch_for_dataset,patches_dict)
             else :
-                patches_dict = make_patch_of_f_num_image(image_path,data_path,set_num,f_num_list_id,num_crop,num_cores,is_test)
+                patches_dict = make_patch_of_f_num_image(image_path,data_path,set_num,num_crop,num_cores,is_test)
                 if is_test is True:
                     print(image_idx,image_path)
                     print(dataset_type)
