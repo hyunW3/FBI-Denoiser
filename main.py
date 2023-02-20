@@ -5,6 +5,7 @@ import os,sys
 import torch
 import numpy as np
 import random
+from neptune_setting import init_neptune
 
 args = get_args()
 
@@ -19,23 +20,34 @@ if torch.cuda.is_available():
     torch.cuda.manual_seed(args.seed)
 if args.train_set is not None:
     print(args.train_set,args.train_set_str)
+
     
+if args.log_off is True:
+    args.neptune_logger = {}
+else :
+    # run_id = f"FBI-Net_semi_BSN_test_BSN_type_{args.BSN_type}_BSN_param_{args.BSN_param}_{args.data_name}_{args.noise_type}_{args.data_type}_alpha_{args.alpha}_beta_{args.beta}_mul_{args.mul}_num_of_layers_{args.num_layers}_output_type_{args.output_type}_sigmoid_value_{args.sigmoid_value}_seed_{args.seed}_date_{args.date}"
+    # run_id = f"R_N2N_{args.wholedataset_version}_train{args.train_set_str}_{args.x_f_num}-{args.y_f_num}_{args.loss_function}"
+    run_id = f"Noisy_sup_{args.wholedataset_version}_train{args.train_set_str}_{args.x_f_num}-{args.y_f_num}_{args.loss_function}"
+    # run_id = f"FBI-Net_train_with_originalPGparam_{args.with_originalPGparam}_{args.data_name}_{args.noise_type}_{args.data_type}_alpha_{args.alpha}_beta_{args.beta}_mul_{args.mul}_num_of_layers_{args.num_layers}_output_type_{args.output_type}_sigmoid_value_{args.sigmoid_value}_seed_{args.seed}_date_{args.date}"
+    args.neptune_logger = init_neptune(run_id)
 if __name__ == '__main__':
     """Trains Noise2Noise."""
     save_file_name =""
     if args.noise_type == 'Poisson-Gaussian':
         if args.data_name == 'fivek': 
             if args.data_type == 'RawRGB' and args.alpha == 0 and args.beta == 0:
-                tr_data_dir = './data/train_fivek_rawRGB_25000x256x256_cropped_random_noise.hdf5'
-                te_data_dir = './data/test_fivek_rawRGB_random_noise.hdf5'
+                tr_data_dir = './data/Fivek_dataset/train_fivek_rawRGB_25000x256x256_cropped_random_noise.hdf5'
+                te_data_dir = './data/Fivek_dataset/test_fivek_rawRGB_random_noise.hdf5'
             
                 save_file_name = str(args.date)+ '_'+str(args.model_type)+'_' + str(args.data_type) +'_' + 'random_noise'
             
             else:
-                tr_data_dir = './data/train_fivek_rawRGB_25000x256x256_cropped_alpha_'+str(args.alpha)+'_beta_'+str(args.beta)+'.hdf5'
-                te_data_dir = './data/test_fivek_rawRGB_alpha_'+str(args.alpha)+'_beta_'+str(args.beta)+'.hdf5'
+                tr_data_dir = './data/Fivek_dataset/train_fivek_rawRGB_25000x256x256_cropped_alpha_'+str(args.alpha)+'_beta_'+str(args.beta)+'.hdf5'
+                te_data_dir = './data/Fivek_dataset/test_fivek_rawRGB_alpha_'+str(args.alpha)+'_beta_'+str(args.beta)+'.hdf5'
             
                 save_file_name = str(args.date)+ '_'+str(args.model_type)+'_' + str(args.data_type) +'_'+ str(args.data_name)+ '_alpha_' + str(args.alpha) + '_beta_' + str(args.beta)
+            if args.with_originalPGparam is True:
+                save_file_name += "_with_originalPGparam"
         else : #Samsung SEM image
             tr_data_dir = f"./data/train_Samsung_SNU_patches_SET{args.set_num}.hdf5"
             te_data_dir = f'./data/val_Samsung_SNU_patches_SET{args.set_num}.hdf5'
@@ -93,10 +105,12 @@ if __name__ == '__main__':
     elif args.model_type == 'DBSN':
         save_file_name = ''
     elif args.model_type == 'PGE_Net':
-        save_file_name += '_cropsize_' + str(args.crop_size)
+        save_file_name += f"_cropsize_{args.crop_size}_vst_{args.vst_version}"
+        args.neptune_logger['Network'] = 'PGE_Net'
     elif args.model_type == 'FBI_Net':
         save_file_name += '_layers_x' + str(args.num_layers) + '_filters_x' + str(args.num_filters)+ '_cropsize_' + str(args.crop_size)
-    
+        args.neptune_logger['Network'] = 'FBI_Net'
+    args.neptune_logger['save_filename'] = save_file_name
     print ('save_file_name : ', save_file_name)
     # Initialize model and train
     output_folder = './output_log'
@@ -109,6 +123,8 @@ if __name__ == '__main__':
     if args.test is False:
         sys.stderr = f
         sys.stdout = f
+    
+    args.neptune_logger['params']= args
     if args.model_type != 'PGE_Net':
         train = Train_FBI(_tr_data_dir=tr_data_dir, _te_data_dir=te_data_dir, _save_file_name = save_file_name,  _args = args)
     else:
@@ -118,4 +134,6 @@ if __name__ == '__main__':
     sys.stderr = orig_stderr
     if args.test is False:
         f.close()   
-    print ('save_file_name : ', save_file_name)
+    print ('Finsh training - save_file_name : ', save_file_name)
+    if args.log_off is False:
+        args.neptune_logger.stop()
