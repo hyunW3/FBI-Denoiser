@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from core.layers import Residual_module, New1_layer, New2_layer, New3_layer, Receptive_attention
+from core.layers import Residual_module, New1_layer, New2_layer, New3_layer, Semi_BSN
 
 class AttrProxy(object):
     """Translates index lookups into attribute lookups."""
@@ -14,12 +14,12 @@ class AttrProxy(object):
         return getattr(self.module, self.prefix + str(i))
 
 class New_model(nn.Module):
-    def __init__(self, channel = 1, output_channel = 1, filters = 64, num_of_layers=10, mul = 1, case = 'FBI_Net', output_type='linear', sigmoid_value = 0.1):
+    def __init__(self, channel = 1, output_channel = 1, filters = 64, num_of_layers=10, mul = 1, case = 'FBI_Net', BSN_type = {"type" : 'normal-BSN', "param" : 0.001},output_type='linear', sigmoid_value = 0.1):
         super(New_model, self).__init__()
         
         self.case = case
+        self.new1 = New1_layer(channel, filters, mul = mul, case = case, BSN_type = BSN_type ,output_type='linear').cuda()
 
-        self.new1 = New1_layer(channel, filters, mul = mul, case = case).cuda()
         self.new2 = New2_layer(filters, filters, mul = mul, case = case).cuda()
         
         self.num_layers = num_of_layers
@@ -37,9 +37,12 @@ class New_model(nn.Module):
         
         if self.output_type == 'sigmoid':
             self.sigmoid=nn.Sigmoid().cuda()
-        print(f"output type : {self.output_type}")
+        # print(f"output type : {self.output_type}")
         self.new = AttrProxy(self, 'new_')
-
+    def eval(self):
+        self.new1.eval()
+    def train(self):
+        self.new1.train()
     def forward(self, x):
         
         if self.case == 'FBI_Net' or self.case == 'case2' or self.case == 'case3' or self.case == 'case4':

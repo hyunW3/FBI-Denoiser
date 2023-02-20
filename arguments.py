@@ -27,6 +27,12 @@ def get_args():
                                  'DBSN',
                                  'FC-AIDE'],
                         help='(default=%(default)s)')
+    parser.add_argument('--BSN-type', default='normal-BSN', type=str, required=False,
+                        choices=['normal-BSN','slightly-BSN','prob-BSN'],
+    )
+    parser.add_argument('--BSN-param', default=0.1, type=float,
+             help="for slightly BSN, it becomes main-pixel multipler, for randomly BSM, it become probability to mask", required=False)
+    parser.add_argument('--prob-BSN-test-mode', action='store_true', help='for prob-BSN, test mode on')
     parser.add_argument('--data-type', default='RawRGB', type=str, required=False,
                         choices=['Grayscale',
                                  'RawRGB',
@@ -55,10 +61,10 @@ def get_args():
     parser.add_argument('--test-alpha', default=0, type=float, help='(default=%(default)f)')
     parser.add_argument('--test-beta', default=0, type=float, help='(default=%(default)f)')
 
-    parser.add_argument('--train-set', type=str, nargs="+", help='To specify train set')
+    # parser.add_argument('--train-set', type=str, nargs="+", help='To specify train set')
     parser.add_argument('--test-wholedataset', action='store_true', help='To test on wholedataset')
     parser.add_argument('--wholedataset-version', default='v1', type=str, 
-                            choices = ['v1', 'v2'],
+                            choices = ["None",'v1', 'v2'],
                             help='Select wholedataset version \
                             v1 : SET01~SET04, v2 : SET05~SET10(default=%(default)f)')
 
@@ -75,8 +81,8 @@ def get_args():
     
     parser.add_argument('--use-other-target', action='store_true', help='For samsung SEM image, use other noisy image as target. \
         In PGE-Net evaluation, it denotes specific f number (noisy level), not all F numbers')
-    parser.add_argument('--x-f-num', default='F1', type=str, help='For samsung SEM image, set input of f-number 8,16,32,64',
-                        choices=['F1','F2','F4','F8','F8','F01','F02','F04','F08','F16','F32','F64'])
+    parser.add_argument('--x-f-num', default='F#', type=str, help='For samsung SEM image, set input of f-number 8,16,32,64',
+                        choices=['F#', 'F1','F2','F4','F8','F8', 'F01','F02','F04','F08','F16','F32','F64'])
     parser.add_argument('--y-f-num', default='F64', type=str, help='For samsung SEM image, set target of f-number 8,16,32,64',
                         choices=['F1','F2','F4','F8','F01','F02','F04','F08','F16','F32','F64'])
     parser.add_argument('--integrate-all-set', action='store_true', help='For samsung SEM image, no matter what f-number is, integrate all set')
@@ -86,19 +92,23 @@ def get_args():
     parser.add_argument('--set-num', default=-1, type=int, help='For samsung SEM image, need f-number 8,16,32,64',
                         choices=[1,2,3,4,5,6,7,8,9,10])
     parser.add_argument('--test', action='store_true', help='For samsung SEM image, train dataset to be test dataset(small size)')
+    parser.add_argument('--log-off',action='store_true', help='logger (neptune) off')
+    parser.add_argument('--speed-test',action='store_true', help='for speed test')
+    parser.add_argument('--apply_median_filter',action='store_true', help='apply median_filter instead of FBI-Net')
     parser.add_argument('--train-with-MSEAffine', action='store_true', help='For samsung SEM image, clean image is denoised image with MSE_AFFINE,not F64 image')
+    parser.add_argument('--with-originalPGparam', action='store_true', help='For noise estimation, not using PGE-Net, use original PG param(oracle)')
     args=parser.parse_args()
     
-    if args.train_set is not None:
-        args.train_set = sorted(args.train_set, key=lambda x : int(x))
-        args.train_set_str = "".join(args.train_set)
-        args.train_set = list(map(lambda x : int(x), args.train_set))
-        if args.wholedataset_version == 'v1' :
-            possible_set = [1,2,3,4]
-        else :
-            possible_set = [5,6,7,8,9,10]
-        if not set(args.train_set).issubset(possible_set) :
-            raise ValueError("train set should be in {}".format(possible_set))
+    # if args.train_set is not None:
+    #     args.train_set = sorted(args.train_set, key=lambda x : int(x))
+    #     args.train_set_str = "".join(args.train_set)
+    #     args.train_set = list(map(lambda x : int(x), args.train_set))
+    #     if args.wholedataset_version == 'v1' :
+    #         possible_set = [1,2,3,4]
+    #     else :
+    #         possible_set = [5,6,7,8,9,10]
+    #     if not set(args.train_set).issubset(possible_set) :
+    #         raise ValueError("train set should be in {}".format(possible_set))
     return args
 
 

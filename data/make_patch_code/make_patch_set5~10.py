@@ -46,6 +46,7 @@ data_path_list = [# "Samsung_SNU_1474x3010_aligned_ordered",
 crop_size = 256
 num_crop= args.num_crop#500
 num_cores = 32
+val_off = True
 
  
 output_folder = './output_log_make_patch_whole.txt'
@@ -57,7 +58,6 @@ orig_stderr = sys.stderr
 if args.test is False:
     sys.stderr = f
     sys.stdout = f
-val_off = True
 
 
 
@@ -67,7 +67,7 @@ for data_path in data_path_list:
     ## dataset init
     set_number_list = map(lambda x : x[3:],set_list) # ['01','02','03','04']
     set_number_list_str = "".join(set_number_list)
-    save_filename = f"Samsung_SNU_patches_SET{set_number_list_str}_divided_by_fnum_setnum_1"
+    save_filename = f"Samsung_SNU_patches_SET{set_number_list_str}_divided_by_fnum_setnum"
 
     if data_path == "Samsung_SNU_1474x3010_aligned_ordered":
         patch_for_dataset = make_intial_patch_for_whole_dataset(set_num_list=['SET01','SET02','SET03','SET04'],
@@ -77,7 +77,7 @@ for data_path in data_path_list:
         patch_for_dataset = make_intial_patch_for_whole_dataset(set_num_list=['SET05', 'SET06', 'SET07', 'SET08', 'SET09', 'SET10'],
                                                         f_num_list=['F01','F02','F04','F08','F16','F32','F64'],val_off=val_off)
         init_dataset(patch_for_dataset,save_filename)
-        num_crop = 3600
+        num_crop = 4320
     if args.test is True:
         print(data_path)
         if data_path == "Samsung_SNU_1474x3010_aligned_ordered":

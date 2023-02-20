@@ -36,7 +36,8 @@ if __name__ == '__main__':
         
         elif args.data_type == 'RawRGB' and args.data_name == 'fivek' and args.alpha != 0 and args.beta != 0:
             
-            te_data_dir = './data/test_fivek_rawRGB_alpha_'+str(args.alpha)+'_beta_'+str(args.beta)+'.hdf5'
+            # te_data_dir = './data/test_fivek_rawRGB_alpha_'+str(args.alpha)+'_beta_'+str(args.beta)+'.hdf5'
+            te_data_dir = f'./PGE_estimate_test_fivek/test_fivek_rawRGB_alpha_{args.alpha}_beta_{args.beta}_20sampling20images.hdf5'
             fbi_weight_dir = './weights/211127_FBI_Net_RawRGB_fivek_alpha_'+str(args.alpha)+'_beta_'+str(args.beta)+'_layers_x17_filters_x64_cropsize_220.w'
             pge_weight_dir = './weights/211127_PGE_Net_RawRGB_fivek_alpha_'+str(args.alpha)+'_beta_'+str(args.beta)+'_cropsize_200.w'
             
@@ -83,13 +84,15 @@ if __name__ == '__main__':
             save_file_name = str(args.date)+ '_'+str(args.model_type)+'_' + str(args.data_type) +'_'+ str(args.data_name)
         else : # for samsung SEM image
             te_data_dir = f"./data/{args.dataset_type}_Samsung_SNU_patches_SET{args.set_num}.hdf5"
+            if args.speed_test is True:
+                te_data_dir = f"./denoise_and_get_CD/test_speed_of_denoising/one_img_SET01_F32_02_x32.hdf5" # for denoising speed test
             fbi_weight_dir = f'./weights/{args.date}_FBI_Net_Grayscale_Samsung_SET{args.set_num}_{args.loss_function}_layers_x17_filters_x64_cropsize_256.w'
             pge_weight_dir = f'./weights/{args.date}_PGE_Net_Grayscale_Samsung_SET{args.set_num}_Noise_est_cropsize_256.w'
             
     
             save_file_name = f"{args.date}_{args.dataset_type}data_{args.model_type}_{args.data_type}_{args.data_name}_SET{args.set_num}"
             if args.use_other_target is True:
-                te_data_dir = f'./data/{args.dataset_type}_Samsung_SNU_patches_SET{args.set_num}_divided_by_fnum.hdf5'
+                te_data_dir = f'./data/Samsung_tmp_dataset/{args.dataset_type}_Samsung_SNU_patches_SET{args.set_num}_divided_by_fnum.hdf5'
                 fbi_weight_dir = f'./weights/{args.date}_FBI_Net_Grayscale_Samsung_SET{args.set_num}_x_as_{args.x_f_num}_y_as_{args.y_f_num}_{args.loss_function}_layers_x17_filters_x64_cropsize_256.w'
                 pge_weight_dir = f'./weights/{args.date}_PGE_Net_Grayscale_Samsung_SET{args.set_num}_{args.x_f_num}_Noise_est_cropsize_256.w'
                 if args.integrate_all_set is True:
@@ -103,7 +106,9 @@ if __name__ == '__main__':
             else :
                 fbi_weight_dir = f'./weights/{args.date}_FBI_Net_Grayscale_Samsung_SET{args.set_num}_{args.loss_function}_layers_x17_filters_x64_cropsize_256.w'
                 pge_weight_dir = f'./weights/{args.date}_PGE_Net_Grayscale_Samsung_SET{args.set_num}_Noise_est_cropsize_256.w'
-    
+    if args.with_originalPGparam is True:
+        save_file_name += f"_with_originalPGparam"
+    print("batch size : ",args.batch_size)
     print ('te data dir : ', te_data_dir)
     print ('fbi weight dir : ', fbi_weight_dir)
     print ('pge weight dir : ', pge_weight_dir)

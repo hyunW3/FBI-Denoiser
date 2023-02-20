@@ -6,13 +6,14 @@ import os
 import scipy.io as sio
 
 from datetime import date
+from .median_filter import apply_median_filter_cpu, apply_median_filter_gpu, init_median_filter_model
 from .utils import TedataLoader, get_PSNR, get_SSIM, inverse_gat, gat, normalize_after_gat_torch
 from .loss_functions import mse_bias, mse_affine, emse_affine
 from .models import New_model
 from .fcaide import FC_AIDE
 from .dbsn import DBSN_Model
 from .unet import est_UNet
-
+import pandas as pd
 import time
 
 torch.backends.cudnn.benchmark=True
@@ -21,13 +22,13 @@ class Test_FBI(object):
     def __init__(self,_te_data_dir=None,_pge_weight_dir=None,_fbi_weight_dir=None, _save_file_name = None, _args = None):
         
         self.args = _args
-        if self.args.pge_weight_dir != None:
-            self.pge_weight_dir = './weights/' + self.args.pge_weight_dir
-        
+        if _pge_weight_dir != None:
+            self.pge_weight_dir = _pge_weight_dir # './weights/' + _pge_weight_dir
+            # print(self.pge_weight_dir)
         self._te_data_dir = _te_data_dir
         self.te_data_loader = TedataLoader(_te_data_dir, self.args)
         self.te_data_loader = DataLoader(self.te_data_loader, batch_size=1, shuffle=False, num_workers=0, drop_last=False)
-
+       
         self.result_psnr_arr = []
         self.result_ssim_arr = []
         self.result_time_arr = []
@@ -92,75 +93,107 @@ class Test_FBI(object):
         ssim_arr = []
         time_arr = []
         denoised_img_arr = []
-
+        apply_median_filter_on = self.args.apply_median_filter
+        if apply_median_filter_on is True:
+            median_filter_model = init_median_filter_model(kernel_size=11, repeat=3).cuda()
         with torch.no_grad():
-
+            print("evaluation start...")
             for batch_idx, (source, target) in enumerate(self.te_data_loader):
 
                 start = time.time()
 
                 source = source.cuda()
                 target = target.cuda()
-                
+
+                if apply_median_filter_on is True:
+                    # source = source.cpu().numpy()
+                    X = source
+                    print(X.shape)
+                # print(source.shape)
+                # time.sleep(30)
+                denoising_start = time.time()
                 # Denoise
-                if self.args.loss_function =='EMSE_Affine':
-                                        
-                    est_param=self.pge_model(source)
-                    original_alpha=torch.mean(est_param[:,0])
-                    original_sigma=torch.mean(est_param[:,1])
-                    
-                    transformed=gat(source,original_sigma,original_alpha,0)
-                    transformed, transformed_sigma, min_t, max_t= normalize_after_gat_torch(transformed)
-                    
-                    transformed_target = torch.cat([transformed, transformed_sigma], dim = 1)
-#                     target = torch.cat([target,transformed_sigma], dim = 1)
-
-                    output = self.model(transformed)
-    
-                    # loss = self.loss(output, transformed_target)
-        
+                if apply_median_filter_on is True:
+                    print(source.shape)
+                    X_hat = apply_median_filter_gpu(median_filter_model,source)
+                    # print(X_hat.shape)
                 else:
-                    # Denoise image
-                    if self.args.model_type == 'DBSN':
-                        output, _ = self.model(source)
-                        # loss = self.loss(output, target)
-                    else:
-                        output = self.model(source)
-                        # loss = self.loss(output, target)
-                
+                    if self.args.loss_function =='EMSE_Affine':
+                        if self.args.with_originalPGparam is True:
+                            original_alpha=torch.tensor(self.args.alpha).unsqueeze(0).cuda()
+                            original_sigma=torch.tensor(self.args.beta).unsqueeze(0).cuda()
+                            # print(original_alpha,original_sigma)
+                        else :
+                            est_param=self.pge_model(source)
+                            original_alpha=torch.mean(est_param[:,0])
+                            original_sigma=torch.mean(est_param[:,1])
+                        
+                        transformed=gat(source,original_sigma,original_alpha,0)
+                        transformed, transformed_sigma, min_t, max_t= normalize_after_gat_torch(transformed)
+                        
+                        transformed_target = torch.cat([transformed, transformed_sigma], dim = 1)
+    #                     target = torch.cat([target,transformed_sigma], dim = 1)
 
-                if self.args.loss_function == 'MSE':
-                    output = output.cpu().numpy()
-                    X_hat = np.clip(output, 0, 1)
-                    X = target.cpu().numpy()
+                        output = self.model(transformed)
+        
+                        # loss = self.loss(output, transformed_target)
+            
                     
-                elif self.args.loss_function == 'MSE_Affine':
+                    else:
+                        # Denoise image
+                        if self.args.model_type == 'DBSN':
+                            output, _ = self.model(source)
+                            # loss = self.loss(output, target)
+                        else:
+                            output = self.model(source)
+                            # loss = self.loss(output, target)
                     
-                    Z = target[:,:1]
-                    X = target[:,1:].cpu().numpy()
-                    X_hat = np.clip(self.get_X_hat(Z,output).cpu().numpy(), 0, 1)
+
+                    if self.args.loss_function == 'MSE':
+                        output = output.cpu().numpy()
+                        X_hat = np.clip(output, 0, 1)
+                        X = target.cpu().numpy()
+                        
+                    elif self.args.loss_function == 'MSE_Affine':
+                        
+                        Z = target[:,:1]
+                        X = target[:,1:].cpu().numpy()
+                        X_hat = np.clip(self.get_X_hat(Z,output).cpu().numpy(), 0, 1)
+                        
+                    elif  self.args.loss_function == 'N2V':
+                        X = target[:,1:].cpu().numpy()
+                        X_hat = np.clip(output.cpu().numpy(), 0, 1)
                     
-                elif  self.args.loss_function == 'N2V':
-                    X = target[:,1:].cpu().numpy()
-                    X_hat = np.clip(output.cpu().numpy(), 0, 1)
+                    elif self.args.loss_function == 'EMSE_Affine':
+                        
+                        transformed_Z = transformed_target[:,:1]
+                        X = target.cpu().numpy()
+                        X_hat = self.get_X_hat(transformed_Z,output).cpu().numpy()
+                        
+                        transformed=transformed.cpu().numpy()
+                        original_sigma=original_sigma.cpu().numpy()
+                        original_alpha=original_alpha.cpu().numpy()
+                        min_t=min_t.cpu().numpy()
+                        max_t=max_t.cpu().numpy()
+                        X_hat =X_hat*(max_t-min_t)+min_t
+                        X_hat=np.clip(inverse_gat(X_hat,original_sigma,original_alpha,0,method='closed_form'), 0, 1)
+                current_time = time.time()
+                inference_time = current_time-start
+                inference_time_wo_memcpy = current_time - denoising_start
+                if self.args.test is True: 
+                    print(f"{batch_idx}th image inference time (w/o memcpy): {inference_time_wo_memcpy:.4f}")
+                    print(f"{batch_idx}th image inference time (with memcpy): {inference_time:.4f}")
+                source = source.cpu().numpy()  
+                if apply_median_filter_on is True:
+                    source = source
+                    X = target[:,:1].cpu().numpy()
+                    X_hat = np.clip(X_hat.cpu().numpy(), 0, 1)
                     
-                
-                elif self.args.loss_function == 'EMSE_Affine':
-                    
-                    transformed_Z = transformed_target[:,:1]
-                    X = target.cpu().numpy()
-                    X_hat = self.get_X_hat(transformed_Z,output).cpu().numpy()
-                    
-                    transformed=transformed.cpu().numpy()
-                    original_sigma=original_sigma.cpu().numpy()
-                    original_alpha=original_alpha.cpu().numpy()
-                    min_t=min_t.cpu().numpy()
-                    max_t=max_t.cpu().numpy()
-                    X_hat =X_hat*(max_t-min_t)+min_t
-                    X_hat=np.clip(inverse_gat(X_hat,original_sigma,original_alpha,0,method='closed_form'), 0, 1)
-                
-                inference_time = time.time()-start
-                source = source.cpu().numpy()
+                    # print(X.shape, source.shape,X_hat.shape)
+                #     source = source[0]
+                #     X = np.expand_dims(X,axis=0)
+                #     X_hat = np.expand_dims(X_hat,axis=0)
+                    # print(X.shape,source.shape,X_hat[0].shape)
                 psnr_val = get_PSNR(X[0], source[0])
                 ssim_val = get_SSIM(X[0], source[0],self.args.data_type)
                 print(X[0].min(), X[0].max(), " and ", X_hat[0].min(),X_hat[0].max())
@@ -172,22 +205,25 @@ class Test_FBI(object):
                 psnr_arr.append(psnr_val)
                 ssim_arr.append(ssim_val)
                 time_arr.append(inference_time)
-                denoised_img_arr.append(X_hat[0].reshape(X_hat.shape[2],X_hat.shape[3]))
+                if apply_median_filter_on is False:
+                    denoised_img_arr.append(X_hat[0].reshape(X_hat.shape[2],X_hat.shape[3]))
                 print(f"image : {batch_idx:02d} ->\t psnr : {round(float(psnr_val),4):.4f}, ssim : {round(float(ssim_val),6):.6f} after  denoise {self.args.loss_function}")
-       
+                # if self.args.test is True:
+                #     break
         mean_psnr = np.mean(psnr_arr)
         mean_ssim = np.mean(ssim_arr)
         mean_time = np.mean(time_arr)
-
+        metric = {"psnr" : psnr_arr, "ssim" : ssim_arr, "mean_psnr" : mean_psnr, "mean_ssim" : mean_ssim}
+        metric = pd.DataFrame(metric).T 
+        metric.to_csv(f"./PGE_estimate_test_fivek/output_metric/{self.save_file_name}_seed_{self.args.seed}.csv")
         if self.best_psnr <= mean_psnr:
             self.best_psnr = mean_psnr
             #self.result_denoised_img_arr = denoised_img_arr.copy()
             
         print ('PSNR : ', round(mean_psnr,4), '\tSSIM : ', round(mean_ssim,4))
         denoised_img_arr = np.array(denoised_img_arr)
-        np.save(f'./result_data/{self.save_file_name}.npy',denoised_img_arr)
+        np.save(f"./PGE_estimate_test_fivek/output_metric/{self.save_file_name}.npy",denoised_img_arr)
+        # np.save(f'./result_data/{self.save_file_name}.npy',denoised_img_arr)
         return 
   
-
-
 

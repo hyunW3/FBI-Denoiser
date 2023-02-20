@@ -2,7 +2,7 @@ import os
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-
+import wandb
 import numpy as np
 import scipy.io as sio
 from datetime import date
@@ -65,14 +65,14 @@ class Train_FBI(object):
             
             self.loss = emse_affine
             num_output_channel = 2
+            if self.args.with_originalPGparam is False:
+                ## load PGE model
+                self.pge_model=est_UNet(num_output_channel,depth=3)
+                self.pge_model.load_state_dict(torch.load(self.pge_weight_dir))
+                self.pge_model=self.pge_model.cuda()
             
-            ## load PGE model
-            self.pge_model=est_UNet(num_output_channel,depth=3)
-            self.pge_model.load_state_dict(torch.load(self.pge_weight_dir))
-            self.pge_model=self.pge_model.cuda()
-            
-            for param in self.pge_model.parameters():
-                param.requires_grad = False
+                for param in self.pge_model.parameters():
+                    param.requires_grad = False
             
             self.args.output_type = "sigmoid"
         
@@ -90,10 +90,13 @@ class Train_FBI(object):
                             br2_blindspot_conv_ks = 5,
                             activate_fun = 'Relu')
         else:
-            self.model = New_model(channel = 1, output_channel =  num_output_channel, filters = self.args.num_filters, num_of_layers=self.args.num_layers, case = self.args.model_type, output_type = self.args.output_type, sigmoid_value = self.args.sigmoid_value)
+            self.model = New_model(channel = 1, output_channel =  num_output_channel, 
+                                filters = self.args.num_filters, num_of_layers=self.args.num_layers, case = self.args.model_type, 
+                                BSN_type = {"type" : self.args.BSN_type, "param" : self.args.BSN_param},
+                                output_type = self.args.output_type, sigmoid_value = self.args.sigmoid_value)
             
         self.model = self.model.cuda()
-            
+        self.args.logger.watch(self.model)
         pytorch_total_params = sum([p.numel() for p in self.model.parameters()])
         print ('num of parameters : ', pytorch_total_params)
         
@@ -113,34 +116,35 @@ class Train_FBI(object):
         #print(X_hat[0])
         return X_hat
     def update_log(self,epoch,output):
-        args = self.args
+        # args = self.args
         mean_tr_loss, mean_te_loss, mean_psnr, mean_ssim = output
-        prefix = f"{self.date}"
+        self.args.logger.log({
+                'train/mean_loss'   : mean_tr_loss,
+                'test/mean_loss'    : mean_te_loss,
+                'mean_psnr'         : mean_psnr,
+                'mean_ssim'         : mean_ssim,
+        })
         
-        if "Samsung" in self.args.data_name:
-            prefix = f"{self.args.data_name}_SET{self.args.set_num}_{self.args.loss_function}_{self.args.output_type}"
-            if args.use_other_target is True:
-                prefix += f'_x_as_{self.args.x_f_num}_y_as_{self.args.y_f_num}'
-            if args.integrate_all_set is True:
-                prefix += f'_integrate_all_set'
-        else :
-            prefix = f"{self.args.data_name}_"
 
-        self.writer.add_scalar(f"{prefix}Tr loss_{args.alpha}&{args.beta}",round(mean_tr_loss,4),epoch)
-        self.writer.add_scalar(f"{prefix}Te loss_{args.alpha}&{args.beta}",round(mean_te_loss,4),epoch)
-        self.writer.add_scalar(f"{prefix}Mean SSIM_{args.alpha}&{args.beta}",round(mean_ssim,4),epoch)
-        self.writer.add_scalar(f"{prefix}Mean PSNR_{args.alpha}&{args.beta}",round(mean_psnr,4),epoch)
-
-        
-    def eval(self):
+    def eval(self,epoch):
         """Evaluates denoiser on validation set."""
-
+        name_sequence = []
+        if self.args.data_name == "Samsung":
+            for i in range(1,11):
+                set_num = f"SET{i:02d}_"
+                if i < 5:
+                    f_num_list = map(lambda x : f"{set_num}{x}",['F08', 'F16', 'F32'])
+                else :
+                    f_num_list = map(lambda x : f"{set_num}{x}",['F01', 'F02', 'F04', 'F08', 'F16', 'F32'])
+                name_sequence += f_num_list
         psnr_arr = []
         ssim_arr = []
         loss_arr = []
         time_arr = []
         denoised_img_arr = []
-
+        # # next prob-BSN
+        if self.args.BSN_type == 'prob-BSN' and self.args.prob_BSN_test_mode is True:
+            self.model.eval()
         with torch.no_grad():
 
             for batch_idx, (source, target) in enumerate(self.te_data_loader):
@@ -152,11 +156,16 @@ class Train_FBI(object):
                 
                 # Denoise
                 if self.args.loss_function =='EMSE_Affine':
-                                        
-                    est_param=self.pge_model(source)
-                    original_alpha=torch.mean(est_param[:,0])
-                    original_sigma=torch.mean(est_param[:,1])
-                    
+                    if self.args.with_originalPGparam is True:
+                        original_alpha=torch.tensor(self.args.alpha).unsqueeze(0).cuda()
+                        original_sigma=torch.tensor(self.args.beta).unsqueeze(0).cuda()
+                    else :
+                        est_param=self.pge_model(source)
+                        original_alpha=torch.mean(est_param[:,0])
+                        original_sigma=torch.mean(est_param[:,1])
+                    if self.args.test is True:
+                        print('original_alpha : ',original_alpha)
+                        print('original_sigma : ',original_sigma)
                     transformed=gat(source,original_sigma,original_alpha,0)
                     transformed, transformed_sigma, min_t, max_t= normalize_after_gat_torch(transformed)
                     
@@ -217,6 +226,19 @@ class Train_FBI(object):
                 psnr_arr.append(get_PSNR(X[0], X_hat[0]))
                 ssim_arr.append(get_SSIM(X[0], X_hat[0],self.args.data_type))
                 denoised_img_arr.append(X_hat[0].reshape(X_hat.shape[2],X_hat.shape[3]))
+                if batch_idx % 100 == 0 and self.args.log_off is False:
+                    name_str = f""
+                    if self.args.data_name == "Samsung":
+                        name_str += f"_{name_sequence[batch_idx // 100]}"
+                    image = wandb.Image(denoised_img_arr[-1], caption = f'EPOCH : {epoch} Batch : {batch_idx}\nPSNR: {psnr_arr[-1]:.4f}, SSIM: {ssim_arr[-1]:.4f}')
+                    self.args.logger.log({f"eval/denoised_img_{name_str}" : image})
+                if batch_idx % 100 ==99 and self.args.log_off is False:
+                    if self.args.data_name == "Samsung":
+                        name_str += f"_{name_sequence[batch_idx // 100]}"
+                    self.args.logger.log({f"eval_{name_str}/loss" : np.mean(loss_arr[-100:])})
+                    self.args.logger.log({f"eval_{name_str}/psnr" : np.mean(psnr_arr[-100:])})
+                    self.args.logger.log({f"eval_{name_str}/ssim" : np.mean(ssim_arr[-100:])})
+                    # self.args.logger.log({f"eval/inference_time" : np.mean(time_arr[-100:])})
                 time_arr.append(inference_time)
 
         mean_loss = np.mean(loss_arr)
@@ -234,29 +256,30 @@ class Train_FBI(object):
     def _on_epoch_end(self, epoch, mean_tr_loss):
         """Tracks and saves starts after each epoch."""
         
-        mean_te_loss, mean_psnr, mean_ssim, mean_time = self.eval()
+        mean_te_loss, mean_psnr, mean_ssim, mean_time = self.eval(epoch)
 
         self.result_psnr_arr.append(mean_psnr)
         self.result_ssim_arr.append(mean_ssim)
         self.result_time_arr.append(mean_time)
         self.result_te_loss_arr.append(mean_te_loss)
         self.result_tr_loss_arr.append(mean_tr_loss)
-
-        sio.savemat('./result_data/'+self.save_file_name + '_result',{'tr_loss_arr':self.result_tr_loss_arr, 'te_loss_arr':self.result_te_loss_arr,'psnr_arr':self.result_psnr_arr, 'ssim_arr':self.result_ssim_arr,'time_arr':self.result_time_arr, 'denoised_img':self.result_denoised_img_arr})
+        if self.args.log_off is False:
+            sio.savemat('./result_data/'+self.save_file_name + '_result',{'tr_loss_arr':self.result_tr_loss_arr, 'te_loss_arr':self.result_te_loss_arr,'psnr_arr':self.result_psnr_arr, 'ssim_arr':self.result_ssim_arr,'time_arr':self.result_time_arr, 'denoised_img':self.result_denoised_img_arr})
 
 #         sio.savemat('./result_data/'+self.save_file_name + '_result',{'tr_loss_arr':self.result_tr_loss_arr, 'te_loss_arr':self.result_te_loss_arr,'psnr_arr':self.result_psnr_arr, 'ssim_arr':self.result_ssim_arr})
 
         print ('Epoch : ', epoch, ' Tr loss : ', round(mean_tr_loss,4), ' Te loss : ', round(mean_te_loss,4),
              ' PSNR : ', round(mean_psnr,4), ' SSIM : ', round(mean_ssim,4),' Best PSNR : ', round(self.best_psnr,4)) 
-        if self.args.test is False:
+        #if self.args.test is False:
+        if self.args.log_off is False:
             self.update_log(epoch,[mean_tr_loss, mean_te_loss, mean_psnr, mean_ssim])
   
     def train(self):
         """Trains denoiser on training set."""
-        
+        if self.args.BSN_type == 'prob-BSN':
+            self.model.train()
         for epoch in range(self.args.nepochs):
 
-            
             tr_loss = []
 
             for batch_idx, (source, target) in enumerate(self.tr_data_loader):
@@ -268,10 +291,17 @@ class Train_FBI(object):
                 #print(source.shape, target.shape) # torch.Size([1, 256, 256]) torch.Size([1,2 ,256, 256])
                 # Denoise
                 if self.args.loss_function =='EMSE_Affine':
-                                        
-                    est_param=self.pge_model(source)
-                    original_alpha=torch.mean(est_param[:,0])
-                    original_sigma=torch.mean(est_param[:,1])
+                    if self.args.with_originalPGparam is True:
+                        original_alpha = self.args.alpha
+                        original_sigma = self.args.beta
+                    else :
+                        est_param=self.pge_model(source)
+                        original_alpha=torch.mean(est_param[:,0])
+                        original_sigma=torch.mean(est_param[:,1])
+                    if self.args.test is True:
+                        print('original_alpha : ',original_alpha)
+                        print('original_sigma : ',original_sigma)
+                        
                     
                     transformed=gat(source,original_sigma,original_alpha,0)
                     transformed, transformed_sigma, min_t, max_t= normalize_after_gat_torch(transformed)
@@ -295,9 +325,10 @@ class Train_FBI(object):
                 self.logger.log(losses = {'loss': loss}, lr = self.optim.param_groups[0]['lr'])
 
                 tr_loss.append(loss.detach().cpu().numpy())
-                # if self.args.test is True:
-                #     break
+                if self.args.test is True:
+                    break
             mean_tr_loss = np.mean(tr_loss)
+            
             self._on_epoch_end(epoch+1, mean_tr_loss)    
             if self.args.nepochs == epoch +1:
                 self.save_model()

@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 import pandas as pd
 import scipy.io as sio
+import os 
 
 from .utils import TedataLoader, chen_estimate, get_PSNR, get_SSIM, inverse_gat, gat, normalize_after_gat_torch
 from .unet import est_UNet
@@ -49,9 +50,9 @@ class Test_PGE(object):
                 
                 # Denoise
                 est_param=self.pge_model(source)
+                
                 original_alpha=torch.mean(est_param[:,0])
                 original_beta=torch.mean(est_param[:,1])
-
                 
                 inference_time = time.time()-start
                 
@@ -73,11 +74,12 @@ class Test_PGE(object):
         mean_beta = np.mean(beta_arr)
         mean_time = np.mean(time_arr)
         alpha_sigma = np.stack((alpha_arr,beta_arr,estimated_gaussian_noise_level_arr),axis=1)
-        np.savetxt(f'./output_log/{self.save_file_name}_alpha_sigma_estimated_gaussian.txt',alpha_sigma,delimiter='\t')
+        os.makedirs('./output_parameter',exist_ok=True)
+        np.savetxt(f'./output_parameter/{self.save_file_name}_alpha_sigma_estimated_gaussian.txt',alpha_sigma,delimiter='\t')
         print ('Mean(alpha) : ', round(mean_alpha,10), 'Mean(beta) : ', round(mean_beta,10))
         f = open("./result.txt",'a')
         print(f"{self.args.data_name} {self.args.dataset_type} alpha {self.args.alpha} beta  {self.args.beta}",file=f)
-        if self.args.test.alpha != 0:
+        if self.args.test_alpha != 0:
             print(f"test alpha {self.args.test_alpha} test beta  {self.args.test_beta}",file=f)
         print(f"Mean estimated_gaussian_noise_level : {np.mean(estimated_gaussian_noise_level_arr)}",file=f)
         f.close()

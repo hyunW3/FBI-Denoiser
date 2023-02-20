@@ -17,7 +17,7 @@ import math
 #from skimage import measure # measure.compare_ssim is deprecated after 0.19
 from sklearn.metrics import mean_squared_error
 from sklearn.feature_extraction import image
-
+import sys
 import matplotlib.pyplot as plt
 from copy import deepcopy
 from scipy.ndimage import median_filter
@@ -31,98 +31,87 @@ class TrdataLoader():
 
         self.tr_data_dir = _tr_data_dir
         self.args = _args
-        if self.args.integrate_all_set is False or self.args.use_other_target is False:
-            self.data = h5py.File(self.tr_data_dir, "r")
+        self.data = h5py.File(self.tr_data_dir, "r")
         self.noisy_arr, self.clean_arr = None, None
         
-        if self.args.use_other_target is True:
-            if  self.args.integrate_all_set is True:
-                for subset_tr_data_dir in self.tr_data_dir:
-                    data = h5py.File(subset_tr_data_dir, "r")
-                    if self.noisy_arr is None:
-                        self.clean_arr = data[f'{self.args.y_f_num}']
-                        self.noisy_arr = data[f'{self.args.x_f_num}']
-                    else:
-                        self.noisy_arr = np.concatenate((self.noisy_arr,data[f'{self.args.x_f_num}']),axis=0)
-                        self.clean_arr = np.concatenate((self.clean_arr,data[f'{self.args.y_f_num}']),axis=0)
-
-            else:
-                try:
-                    self.clean_arr = self.data[f'{self.args.y_f_num}']
-                    self.noisy_arr = self.data[f'{self.args.x_f_num}']
-                except:
-                    print("=== load from original dataset ===")
-                    if self.args.set_num >=5 :
-                        noisy_f_num = ['F1','F2','F4','F8','F16','F32']
-                    else:
-                        noisy_f_num = ['F8','F16','F32']
-                    i = noisy_f_num.index(self.args.x_f_num)*3000
-                    self.noisy_arr = self.data["noisy_images"][i:i+3000]
-                    print(f"{self.args.x_f_num} noisy image sampled from {i}~{i+3000}")
-                    self.clean_arr = self.data["clean_images"][i:i+3000]
-                    # i = noisy_f_num.index(self.args.y_f_num)*3000
-                    # self.clean_arr = self.data["clean_images"][i:i+3000]
-                    # print(f"{self.args.y_f_num} clean image sampled from {i}~{i+3000}")
-        elif self.args.integrate_all_set is True:
+        if self.args.integrate_all_set is True:
             if self.args.individual_noisy_input is True:
-                
+                print(self.data.keys())
                 for set_num in self.data.keys():
                     set_num_idx = int(set_num[3:])
                     if set_num_idx >=5 :
                         f_num_list = ['F01','F02','F04','F08','F16','F32','F64']
                     else:
                         f_num_list = ['F08','F16','F32','F64']
+                    # print(f_num_list)
+                    # print(self.args.x_f_num, self.args.y_f_num)
                     if self.args.x_f_num not in f_num_list or self.args.y_f_num not in f_num_list:
                         continue
-                    if set_num_idx in self.args.train_set :
-                        if self.noisy_arr is None:
-                            self.noisy_arr = self.data[set_num][f'{self.args.x_f_num}']
-                            self.clean_arr = self.data[set_num][f'{self.args.y_f_num}']
-                        else:
-                            self.noisy_arr = np.concatenate((self.noisy_arr,self.data[set_num][f'{self.args.x_f_num}']),axis=0)
-                            self.clean_arr = np.concatenate((self.clean_arr,self.data[set_num][f'{self.args.y_f_num}']),axis=0)
-                            
-                        print(f'===Tr loader {set_num} {self.args.x_f_num} vs {self.args.y_f_num}===')
-                        print(f'{self.noisy_arr.shape[0]}/{self.clean_arr.shape[0]}  images are loaded')
+                    
+                    if self.noisy_arr is None:
+                        self.noisy_arr = self.data[set_num][f'{self.args.x_f_num}']
+                        self.clean_arr = self.data[set_num][f'{self.args.y_f_num}']
+                    else:
+                        self.noisy_arr = np.concatenate((self.noisy_arr,self.data[set_num][f'{self.args.x_f_num}']),axis=0)
+                        self.clean_arr = np.concatenate((self.clean_arr,self.data[set_num][f'{self.args.y_f_num}']),axis=0)
+                        
+                    print(f'===Tr loader {set_num} {self.args.x_f_num} vs {self.args.y_f_num}===')
+                    print(f'{self.noisy_arr.shape[0]}/{self.clean_arr.shape[0]}  images are loaded')
             else :
                 # noisy_f_num_list = ['F01','F02','F04','F08','F16','F32']
-                # img_len = 1000
+                # adjust the number of images for each set
                 mask = None
-                if self.args.wholedataset_version == 'v1':
+                set_num_list = ['SET05','SET06','SET07','SET08','SET09','SET10']
+                data_dict = h5py.File("./data/train_Samsung_SNU_patches_SET01020304_divided_by_fnum_setnum.hdf5", "r")
+                # print(data_dict)
+                if self.args.wholedataset_version == 'v1' and self.args.y_f_num in ['F16','F32','F64']:
                     # take 2400 patches for fnum
-                    mask = [False] * len(self.data['SET01']['F08']) # 7200
-                    for idx in range(0,len(mask),480):
+                    set_num_list = ['SET01','SET02','SET03','SET04'] + set_num_list
+                    mask_len_dict = {'F16': 540} # TODO : option for F32,F64 
+                     #{'F16' : 540, 'F08' : 1200, 'F04' : 1800, 'F02' : 3600} 
+                    mask_len = mask_len_dict[self.args.y_f_num]
+                    mask_v1 = [False] * len(data_dict['SET01']['F08']) # 7200
+                    image_step = 480
+                    num_crop = 144 #mask_len//15
+                    for idx in range(0,len(mask_v1),image_step):
                         # print(idx)
-                        mask[idx:idx+160] = [True] * 160
+                        mask_v1[idx:idx+num_crop] = [True] * num_crop
+                    mask_v2 = [False] * len(self.data['SET05']['F01']) # 7200
+                    mask_v2[:mask_len] = [True] * mask_len
                 elif self.args.wholedataset_version == 'v2':
-                    # take 720 patches for fnum
-                    mask = [False] * len(self.data['SET05']['F01'])# 3600
-                    mask[:720] = [True] * 720
+                    # take 720 patches for fnum 
+                    mask_len_dict = {'F16' : 900, 'F08' : 1200, 'F04' : 1800, 'F02' : 3600} 
+                    mask_len = mask_len_dict[self.args.y_f_num]
+                    mask_v2 = [False] * len(self.data['SET05']['F01'])# 3600
+                    mask_v2[:mask_len] = [True] * mask_len
                 else :
                     raise ValueError("wholedataset_version is not defined")
-                
-                for set_num in self.data.keys():
+                    
+                for set_num in set_num_list:
                     set_num_idx = int(set_num[3:])
-                    if set_num_idx in self.args.train_set :
-                        if set_num_idx >=5 :
-                            noisy_f_num_list = ['F01','F02','F04','F08','F16','F32']
+                    if set_num_idx >=5 :
+                        noisy_f_num_list = ['F01','F02','F04','F08','F16','F32']
+                        data_dict = self.data
+                        mask = mask_v2
+                    else: # SET1~4
+                        noisy_f_num_list = ['F08','F16','F32']
+                        mask = mask_v1
+                    for noisy_f_num in noisy_f_num_list:    
+                        if noisy_f_num == self.args.y_f_num:
+                            break
+                        if self.noisy_arr is None:
+                            print(data_dict[set_num].keys())
+                            print(data_dict[set_num][noisy_f_num].shape)
+                            self.noisy_arr = data_dict[set_num][noisy_f_num][mask]
+                            self.clean_arr = data_dict[set_num][self.args.y_f_num][mask]
                         else:
-                            noisy_f_num_list = ['F08','F16','F32']
-                        for noisy_f_num in noisy_f_num_list:    
+                            self.noisy_arr = np.concatenate((self.noisy_arr,data_dict[set_num][noisy_f_num][mask]),axis=0)
+                            self.clean_arr = np.concatenate((self.clean_arr,data_dict[set_num][self.args.y_f_num][mask]),axis=0)
+                        print('===Tr loader ',set_num, noisy_f_num,'===')
+                        print(f'{self.noisy_arr.shape[0]}/{self.clean_arr.shape[0]}  images are loaded')    
+                    if noisy_f_num == self.args.y_f_num:
+                        continue
                     
-                            if self.noisy_arr is None:
-                                # self.noisy_arr = self.data[set_num][noisy_f_num][:img_len]
-                                # self.clean_arr = self.data[set_num][self.args.y_f_num][:img_len]
-                                self.noisy_arr = self.data[set_num][noisy_f_num][mask]
-                                self.clean_arr = self.data[set_num][self.args.y_f_num][mask]
-                            else:
-                            #     self.noisy_arr = np.concatenate((self.noisy_arr,self.data[set_num][noisy_f_num][:img_len]),axis=0)
-                            #     self.clean_arr = np.concatenate((self.clean_arr,self.data[set_num][self.args.y_f_num][:img_len]),axis=0)
-                                self.noisy_arr = np.concatenate((self.noisy_arr,self.data[set_num][noisy_f_num][mask]),axis=0)
-                                self.clean_arr = np.concatenate((self.clean_arr,self.data[set_num][self.args.y_f_num][mask]),axis=0)
-                    
-                        print('===Tr loader ',set_num, noisy_f_num_list,'===')
-                        print(f'{self.noisy_arr.shape[0]}/{self.clean_arr.shape[0]}  images are loaded')
                     
         else:
             self.noisy_arr = self.data["noisy_images"]
@@ -133,7 +122,6 @@ class TrdataLoader():
 
         self.num_data = self.clean_arr.shape[0]
         print ('num of training patches : ', self.num_data)
-
     def __len__(self):
         return self.num_data
     
@@ -203,42 +191,33 @@ class TrdataLoader():
 class TedataLoader():
 
     def __init__(self,_te_data_dir=None, args = None):
+        """
+        te_data_dir : path to test data or single image
+        """
 
         self.te_data_dir = _te_data_dir
         self.args = args
         if 'SIDD' in self.te_data_dir or 'DND' in self.te_data_dir or 'CF' in self.te_data_dir or 'TP' in self.te_data_dir:
             self.data = sio.loadmat(self.te_data_dir)
-        elif self.args.integrate_all_set is False or self.args.use_other_target is False:
+        elif self.te_data_dir.endswith('.hdf5'):
             self.data = h5py.File(self.te_data_dir, "r")
-    
+        elif self.te_data_dir.endswith('.npy'):
+            self.data = np.load(self.te_data_dir, allow_pickle=True)
+            self.data = self.data.item()
+        elif self.te_data_dir.endswith('.png'):
+            self.noisy_arr = np.array(Image.open(self.te_data_dir))
+            clean_img_path = self.te_data_dir.split('/')[:-1]
+            img_number = self.te_data_dir.split('_')[-1]
+            clean_img_path = f"{clean_img_path}/F64_{img_number}"
+            self.clean_arr = np.array(Image.open(clean_img_path))
+            self.num_data = 1
+            print("load single image")
+            return
+        else :
+            raise ValueError('te_data_dir has to be .mat or .h5f5 or .npy')
         self.noisy_arr, self.clean_arr = None, None
         
-        if self.args.use_other_target is True:
-            if  self.args.integrate_all_set is True: 
-                for subset_te_data_dir in self.te_data_dir:
-                    data = h5py.File(subset_te_data_dir, "r")
-                    if self.noisy_arr is None:
-                        self.clean_arr = data[f'{self.args.y_f_num}']
-                        self.noisy_arr = data[f'{self.args.x_f_num}']
-                    else:
-                        self.noisy_arr = np.concatenate((self.noisy_arr,data[f'{self.args.x_f_num}']),axis=0)
-                        self.clean_arr = np.concatenate((self.clean_arr,data[f'{self.args.y_f_num}']),axis=0)
-    
-            else:
-                try:
-                    self.noisy_arr = self.data[f'{self.args.x_f_num}']
-                    self.clean_arr = self.data[f'{self.args.y_f_num}']
-                except:
-                    print("=== load from original dataset ===")
-                    if self.args.set_num >=5 :
-                        noisy_f_num = ['F1','F2','F4','F8','F16','F32']
-                    else:
-                        noisy_f_num = ['F8','F16','F32']
-                    i = noisy_f_num.index(self.args.x_f_num)*3000
-                    self.noisy_arr = self.data["noisy_images"][i:i+3000]
-                    print(f"{self.args.x_f_num} noisy image sampled from {i}~{i+3000}")
-                    self.clean_arr = self.data["clean_images"][i:i+3000]
-        elif self.args.integrate_all_set is True:
+        if self.args.integrate_all_set is True:
             
             noisy_f_num_list = ['F01','F02','F04','F08','F16','F32']
             if self.args.individual_noisy_input is True:
@@ -266,20 +245,8 @@ class TedataLoader():
                             
                         print(f'===Te loader {set_num} {noisy_f_num_list}  train on {self.args.x_f_num} vs {self.args.y_f_num}===')
                         
-
-                    elif set_num_idx not in self.args.train_set :
-                        if self.noisy_arr is None:
-                            self.noisy_arr = self.data[set_num][f'{self.args.x_f_num}']
-                            self.clean_arr = self.data[set_num][f'F64']
-                        else:
-                            self.noisy_arr = np.concatenate((self.noisy_arr,self.data[set_num][f'{self.args.x_f_num}']),axis=0)
-                            self.clean_arr = np.concatenate((self.clean_arr,self.data[set_num][f'F64']),axis=0)
-                            
-                        print(f'===Te loader {set_num} {self.args.x_f_num} vs {self.args.y_f_num}===')
-                    else :
-                        continue
                     print(f'{self.noisy_arr.shape[0]}/{self.clean_arr.shape[0]}  images are loaded')
-            else : # self.args.individual_noisy_input is False:
+            elif self.args.test_wholedataset is False: # self.args.individual_noisy_input is False:
                 #for set_num_idx in range(1,10+1):
                     #set_num = f"SET{set_num_idx:02d}"
                 for set_num in self.data.keys():
@@ -298,55 +265,40 @@ class TedataLoader():
                                 self.noisy_arr = np.concatenate((self.noisy_arr,self.data[set_num][noisy_f_num][:img_len]),axis=0)
                                 self.clean_arr = np.concatenate((self.clean_arr,self.data[set_num]['F64'][:img_len]),axis=0)
                         print(f'===Te loader {set_num} {noisy_f_num_list}===')
-                    elif set_num_idx not in self.args.train_set :
-                        for noisy_f_num in noisy_f_num_list:  
-                            if self.noisy_arr is None:
-                                self.noisy_arr = self.data[set_num][noisy_f_num]
-                                self.clean_arr = self.data[set_num]['F64']
-                            else:
-                                self.noisy_arr = np.concatenate((self.noisy_arr,self.data[set_num][noisy_f_num]),axis=0)
-                                self.clean_arr = np.concatenate((self.clean_arr,self.data[set_num]['F64']),axis=0)
-                    
-                        print(f'===Te loader {set_num} {self.args.x_f_num}===')
-                    else :
-                        continue
+
                     print(f'{self.noisy_arr.shape[0]}/{self.clean_arr.shape[0]}  images are loaded')
-            if self.args.test_wholedataset is True:
+            else : #if self.args.test_wholedataset is True:
                 # add different dataset
-                if self.args.wholedataset_version == 'v1':
-                    dataset_path = "./data/test_Samsung_SNU_patches_SET050607080910_divided_by_fnum_setnum.hdf5"
-                    noisy_f_num_list = ['F01','F02','F04','F08','F16','F32']
-                elif self.args.wholedataset_version == 'v2':
-                    dataset_path = "./data/test_Samsung_SNU_patches_SET01020304_divided_by_fnum_setnum.hdf5"
-                    noisy_f_num_list = ['F08','F16','F32']   
+
+                set_num_list = ['SET01','SET02','SET03','SET04','SET05','SET06','SET07','SET08','SET09','SET10']
+                
+                dataset_path = "./data/test_Samsung_SNU_patches_SET01020304_divided_by_fnum_setnum.hdf5" 
+                data_dict = h5py.File(dataset_path, "r")
+                
                 img_len = 100
-                with h5py.File(dataset_path,'r') as f:
-                    set_num_list = f.keys()
-                    if self.args.wholedataset_version == 'v2':
-                        set_num_list = reversed(set_num_list)
-                    for set_num in set_num_list:
-                        
-                        for f_num in noisy_f_num_list:
-                            if self.noisy_arr is None:
-                                self.noisy_arr = f[set_num][f_num][:img_len]
-                                self.clean_arr = f[set_num]['F64'][:img_len]
-                            else:
-                                if self.args.wholedataset_version == 'v1':
-                                    self.noisy_arr = np.concatenate((self.noisy_arr,f[set_num][f_num][:img_len]),axis=0)
-                                    self.clean_arr = np.concatenate((self.clean_arr,f[set_num]['F64'][:img_len]),axis=0)
-                                else : # to make sorted way
-                                    self.noisy_arr = np.concatenate((f[set_num][f_num][:img_len],self.noisy_arr),axis=0)
-                                    self.clean_arr = np.concatenate((f[set_num]['F64'][:img_len],self.clean_arr),axis=0)
-                        print(f'===Te loader {set_num} {noisy_f_num_list}===')
-                        print(f'{self.noisy_arr.shape[0]}/{self.clean_arr.shape[0]}  images are loaded')
+                print("test wholedataset ",set_num_list)
+                for set_num in set_num_list:
+                    set_num_idx = int(set_num[3:])
+                    noisy_f_num_list = ['F08','F16','F32']   
+                    if set_num_idx >= 5 :
+                        dataset_path = "./data/test_Samsung_SNU_patches_SET050607080910_divided_by_fnum_setnum.hdf5"
+                        data_dict = h5py.File(dataset_path, "r")
+                        noisy_f_num_list = ['F01', 'F02', 'F04'] + noisy_f_num_list
+                    for f_num in noisy_f_num_list:
+                        if self.noisy_arr is None:
+                            self.noisy_arr = data_dict[set_num][f_num][:img_len]
+                            self.clean_arr = data_dict[set_num]['F64'][:img_len]
+                        else:
+                            self.noisy_arr = np.concatenate((self.noisy_arr, data_dict[set_num][f_num][:img_len]),axis=0)
+                            self.clean_arr = np.concatenate((self.clean_arr, data_dict[set_num]['F64'][:img_len]),axis=0)
+                    print(f'===Te loader {set_num} {noisy_f_num_list}===')
+                    print(f'{self.noisy_arr.shape[0]}/{self.clean_arr.shape[0]}  images are loaded')
         else:
             self.clean_arr = self.data["clean_images"]
             self.noisy_arr = self.data["noisy_images"]
         self.num_data = self.noisy_arr.shape[0]
-        self.args = args
         
         print ('num of test images : ', self.num_data)
-        
     def __len__(self):
         return self.num_data
     
@@ -470,6 +422,15 @@ def gat(z,sigma,alpha,g):
     _sigma=_sigma/_alpha
     f=(2.0)*torch.sqrt(torch.max(z+(3.0/8.0)+_sigma**2,torch.zeros_like(z)))
     return f
+def vst(self,transformed,version='MSE'):    
+        
+        est=chen_estimate(transformed)
+        if version=='MSE':
+            return ((est-1)**2)
+        elif version =='MAE':
+            return abs(est-1)
+        else :
+            raise ValueError("version error in _vst function of train_pge.py")
 
 def inverse_gat(z,sigma1,alpha,g,method='asym'):
    # with torch.no_grad():
@@ -500,22 +461,4 @@ def normalize_after_gat_torch(transformed):
     transformed_sigma=torch.ones_like(transformed)*(transformed_sigma)
     return transformed, transformed_sigma, min_transform, max_transform
 
-def apply_median_filter(img : np.array ,kernel_size  : tuple = (11,11), repeat: int =3 ,plot : bool =False):
-    out = deepcopy(img)
-    if plot is True:
-        plt.title(f'before iter')
-        plt.imshow(out[:200,:200])
-        plt.pause(0.01)
-        plt.figure(figsize=(20,4))
-        plt.plot(out[50][:200])
-        plt.pause(0.01)
-    for i in range(repeat):
-        out = median_filter(out,kernel_size)
-        if plot is True:
-            plt.title(f'{i+1} iter')
-            plt.imshow(out[:200,:200])
-            plt.pause(0.01)
-            plt.figure(figsize=(20,4))
-            plt.plot(out[50][:200])
-            plt.pause(0.01)
-    return out
+

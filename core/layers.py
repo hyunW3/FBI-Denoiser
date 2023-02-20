@@ -1,8 +1,37 @@
+from asyncio import base_events
 import torch
 import torch.nn as nn
 import numpy as np
 import torch.nn.functional as F
-
+ 
+class Semi_BSN(nn.Module):
+    def __init__(self, in_ch, out_ch, layer_type = 'normal-BSN', layer_param = 0.1):
+        super(Semi_BSN, self).__init__()
+        target_weight = None
+        if layer_type == 'normal-BSN':
+            target_weight = 0
+        elif layer_type == 'slightly-BSN' :
+            target_weight = layer_param
+        elif layer_type == 'prob-BSN':
+            target_weight = np.random.randint(0, 2)
+        self.mode = 'train'
+        self.mask = torch.from_numpy(np.array([[1, 1,            1],
+                                               [1, target_weight,1],
+                                               [1, 1,            1]], dtype=np.float32)).cuda()
+        self.conv1 = nn.Conv2d(in_channels=in_ch, out_channels=out_ch, padding = 1, kernel_size = 3)
+    def eval(self):
+        self.mode = 'eval'
+    def train(self):
+        self.mode = 'train'
+    def forward(self, x):
+        # print("layer : mode : ", self.mode)
+        if self.mode == 'train':
+            self.conv1.weight.data =  self.conv1.weight * self.mask
+        else :
+            self.conv1.weight.data =  self.conv1.weight # no mask
+        x = self.conv1(x)
+        
+        return x     
 class New1(nn.Module):
     def __init__(self, in_ch, out_ch):
         super(New1, self).__init__()
@@ -14,8 +43,7 @@ class New1(nn.Module):
         self.conv1.weight.data =  self.conv1.weight * self.mask
         x = self.conv1(x)
         
-        return x   
-    
+        return x    
 class New2(nn.Module):
     def __init__(self, in_ch, out_ch):
         super(New2, self).__init__()
@@ -113,15 +141,28 @@ class Receptive_attention(nn.Module):
         return output
     
 class New1_layer(nn.Module):
-    def __init__(self, in_ch, out_ch, case = 'FBI_Net', mul = 1):
+    def __init__(self, in_ch, out_ch, mul = 1, 
+            case = 'FBI_Net',BSN_type = {"type" : 'normal-BSN', "param" : 0.001} ,output_type='linear'):
         super(New1_layer, self).__init__()
         self.case = case
-        self.new1 = New1(in_ch,out_ch).cuda()
+        self.BSN_type = BSN_type
+        # print(BSN_type)
+        # print(BSN_type.keys())
+        if BSN_type["type"] == 'normal-BSN':
+            # print("normal-BSN")
+            self.new1 = New1(in_ch,out_ch).cuda()
+        else :
+            self.new1 = Semi_BSN(in_ch,out_ch,layer_type = BSN_type["type"], layer_param = BSN_type["param"]).cuda()
         if case == 'case1' or case == 'case2' or case == 'case7' or case == 'FBI_Net':
             self.residual_module = Residual_module(out_ch, mul)
             
         self.activation_new1 = nn.PReLU(in_ch,0).cuda()
-        
+    def train(self):
+        if self.BSN_type != 'normal-BSN':
+            self.new1.train()
+    def eval(self):
+        if self.BSN_type != 'normal-BSN':
+            self.new1.eval()
 
     def forward(self, x):
         

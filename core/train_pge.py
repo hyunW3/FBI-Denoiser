@@ -12,7 +12,7 @@ import torchvision as vision
 import sys
 from .unet import est_UNet  
 import time
-import sys
+import sys, os
 
 class Train_PGE(object):
     def __init__(self,_tr_data_dir=None, _te_data_dir=None, _save_file_name = None, _args = None):
@@ -44,7 +44,7 @@ class Train_PGE(object):
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optim, self.args.drop_epoch, gamma=self.args.drop_rate)
         
         self.model = self.model.cuda()
- 
+
        
     def save_model(self, epoch):
         torch.save(self.model.state_dict(), './weights/'+self.save_file_name  + '.w')
@@ -54,42 +54,76 @@ class Train_PGE(object):
     def eval(self):
         """Evaluates denoiser on validation set."""        
         
+        loss_arr = []
         a_arr=[]
         b_arr=[]
-
+        estimated_gaussian_noise_level_arr = []
         with torch.no_grad():
             for batch_idx, (source, target) in enumerate(self.te_data_loader):
-                
                 source = source.cuda()
                 target = target.cuda()
                 # Denoise
                 
-                output = self.model(source)
+                noise_hat = self.model(source)
   
+                # target = target.cpu().numpy()
+                # noise_hat = noise_hat.cpu().numpy()
+
                 target = target.cpu().numpy()
-                output = output.cpu().numpy()
+                noise_hat = noise_hat.cpu()
 
-                a_arr.append(np.mean(output[:,0]))
-                b_arr.append(np.mean(output[:,1]))
+                predict_alpha=torch.mean(noise_hat[:,0])
+                predict_sigma=torch.mean(noise_hat[:,1])
+                transformed_with_pge = gat(source,predict_sigma,predict_alpha,0)
+                loss=self._vst(transformed_with_pge,self.args.vst_version)
+                estimated_gaussian_noise_level = chen_estimate(transformed_with_pge)
+                
+                loss_arr.append(loss)
+                a_arr.append(predict_alpha)
+                b_arr.append(predict_sigma)
+                estimated_gaussian_noise_level_arr.append(estimated_gaussian_noise_level)
 
-        return a_arr,b_arr 
+                if batch_idx == 0: #and self.args.test is True:
+
+                    self.args.neptune_logger['images'].append(source,
+                                                            description=f'Batch : {batch_idx} Alpha: {a_arr[-1]:.4f}, Sigma: {b_arr[-1]:.8f}, Estimated Noise Level: {estimated_gaussian_noise_level_arr[-1]:.4f}')
+                    
+        mean_te_loss = np.mean(loss_arr)
+        return mean_te_loss, a_arr,b_arr ,estimated_gaussian_noise_level_arr
     
     def _on_epoch_end(self, epoch, mean_tr_loss):
         """Tracks and saves starts after each epoch."""
         self.save_model(epoch)
-        a_arr, b_arr = self.eval()
+        mean_te_loss, a_arr, b_arr,estimated_gaussian_noise_level_arr = self.eval()
         self.result_tr_loss_arr.append(mean_tr_loss)
-        sio.savemat('./result_data/'+self.save_file_name +'_result',{'tr_loss_arr':self.result_tr_loss_arr,'a_arr':a_arr, 'b_arr':b_arr})
-            
-    def _vst(self,transformed):    
+        sio.savemat('./result_data/'+self.save_file_name +'_result',{'tr_loss_arr':self.result_tr_loss_arr,'a_arr':a_arr, 'b_arr':b_arr,
+                                                    'estimated_gaussian_noise_level_arr' : estimated_gaussian_noise_level_arr})
+        # # neptune logger
+        # self.args.logger.log({
+        #     'mean_tr_loss' : mean_tr_loss,
+        #     'mean_te_loss' : mean_te_loss,
+        #     'alpha' : a_arr,
+        #     'sigma' : b_arr
+        # })
+        self.args.neptune_logger[
+        self.args.neptune_logger['mean_te_loss']= mean_tr_loss
+        self.args.neptune_logger['alpha'] = a_arr
+        self.args.neptune_logger['sigma'] = b_arr
+        self.args.neptune_logger['estimated_gaussian_noise_level'] = estimated_gaussian_noise_level_arr
+
+    def _vst(self,transformed,version='MSE'):    
         
         est=chen_estimate(transformed)
-        return ((est-1)**2)
+        if version=='MSE':
+            return ((est-1)**2)
+        elif version =='MAE':
+            return abs(est-1)
+        else :
+            raise ValueError("version error in _vst function of train_pge.py")
      
     def train(self):
         """Trains denoiser on training set."""
         num_batches = len(self.tr_data_loader)
-      
         for epoch in range(self.args.nepochs):
             self.scheduler.step()
             tr_loss = []
@@ -107,14 +141,14 @@ class Train_PGE(object):
                 predict_gat=gat(source,predict_sigma,predict_alpha,0)     
 #                 predict_gat=gat(source,torch.tensor(0.02).to(torch.float32),torch.tensor(0.01).to(torch.float32),0)     
                 
-                loss=self._vst(predict_gat)
+                loss=self._vst(predict_gat,self.args.vst_version)
                 #print(predict_gat,"loss : ",loss)
                 loss.backward()
                 self.optim.step()  
 
                 self.logger.log(losses = {'loss': loss, 'pred_alpha': predict_alpha, 'pred_sigma': predict_sigma}, lr = self.optim.param_groups[0]['lr'])
                 tr_loss.append(loss.detach().cpu().numpy())
-
+                
             mean_tr_loss = np.mean(tr_loss)
             self._on_epoch_end(epoch+1, mean_tr_loss)    
             
