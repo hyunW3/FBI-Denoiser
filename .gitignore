@@ -19,6 +19,8 @@ denoise_and_get_CD/result_data
 
 *.hdf5
 *.pyc
+*.hdf5
+*.png
 *.npy
 *.ipynb_checkpoints/
 *.txt
@@ -26,3 +28,6 @@ denoise_and_get_CD/result_data
 *log*/*
 
 neptune_setting.py
+.neptune/
+wandb_setting.py
+wandb/

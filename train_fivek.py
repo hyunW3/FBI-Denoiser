@@ -14,4 +14,4 @@ for alpha, beta in alpha_beta:
     cmd = list(filter(lambda x : x != '',cmd.split(" ")))
     print(f"===== run fivek alpha : {alpha} beta : {beta} =====")
     #print(cmd)
-    result = subprocess.run(cmd)
+    # result = subprocess.run(cmd)

@@ -1,11 +1,12 @@
 from core.train_fbi import Train_FBI
-from core.train_pge import Train_PGE
+# from core.train_pge import Train_PGE
 from arguments import get_args
 import os,sys
 import torch
 import numpy as np
 import random
 from neptune_setting import init_neptune
+from wandb_setting import init_wandb
 
 args = get_args()
 
@@ -18,18 +19,17 @@ torch.backends.cudnn.deterministic = True
 
 if torch.cuda.is_available():
     torch.cuda.manual_seed(args.seed)
-if args.train_set is not None:
-    print(args.train_set,args.train_set_str)
+    
 
     
 if args.log_off is True:
-    args.neptune_logger = {}
+    args.logger = {}
 else :
     # run_id = f"FBI-Net_semi_BSN_test_BSN_type_{args.BSN_type}_BSN_param_{args.BSN_param}_{args.data_name}_{args.noise_type}_{args.data_type}_alpha_{args.alpha}_beta_{args.beta}_mul_{args.mul}_num_of_layers_{args.num_layers}_output_type_{args.output_type}_sigmoid_value_{args.sigmoid_value}_seed_{args.seed}_date_{args.date}"
-    # run_id = f"R_N2N_{args.wholedataset_version}_train{args.train_set_str}_{args.x_f_num}-{args.y_f_num}_{args.loss_function}"
-    run_id = f"Noisy_sup_{args.wholedataset_version}_train{args.train_set_str}_{args.x_f_num}-{args.y_f_num}_{args.loss_function}"
+
+    run_id = f"new_RN2N_{args.wholedataset_version}_{args.x_f_num}-{args.y_f_num}_{args.loss_function}"
     # run_id = f"FBI-Net_train_with_originalPGparam_{args.with_originalPGparam}_{args.data_name}_{args.noise_type}_{args.data_type}_alpha_{args.alpha}_beta_{args.beta}_mul_{args.mul}_num_of_layers_{args.num_layers}_output_type_{args.output_type}_sigmoid_value_{args.sigmoid_value}_seed_{args.seed}_date_{args.date}"
-    args.neptune_logger = init_neptune(run_id)
+    args.logger = init_wandb(project_name = "RN2N", run_id = run_id,tag=['RN2N','wholeFnum'])
 if __name__ == '__main__':
     """Trains Noise2Noise."""
     save_file_name =""
@@ -78,21 +78,15 @@ if __name__ == '__main__':
                 else:
                     save_file_name += f'_{args.x_f_num}'        
             elif args.integrate_all_set is True:
+                tr_data_dir = f'./data/train_Samsung_SNU_patches_SET050607080910_divided_by_fnum_setnum.hdf5'
+                te_data_dir = f'./data/test_Samsung_SNU_patches_SET050607080910_divided_by_fnum_setnum.hdf5'
+                save_file_name += f"_SET050607080910"
                 if args.wholedataset_version == 'v1':
-                    tr_data_dir = f'./data/train_Samsung_SNU_patches_SET01020304_divided_by_fnum_setnum.hdf5'
-                    te_data_dir = f'./data/test_Samsung_SNU_patches_SET01020304_divided_by_fnum_setnum.hdf5'
-                    save_file_name += f"_SET01020304"
-                elif args.wholedataset_version == 'v2':
-                    tr_data_dir = f'./data/train_Samsung_SNU_patches_SET050607080910_divided_by_fnum_setnum.hdf5'
-                    te_data_dir = f'./data/test_Samsung_SNU_patches_SET050607080910_divided_by_fnum_setnum.hdf5'
-                    save_file_name += f"_SET050607080910"
-                
-                if args.train_set is not None:
-                    save_file_name += f"_train_set_{args.train_set_str}"
+                    save_file_name += f"_with_SET01020304"
                 if args.individual_noisy_input is True :
                     save_file_name += f"individual_x_as_{args.x_f_num}_y_as_{args.y_f_num}"
                 else :
-                    save_file_name += f"_mixed"
+                    save_file_name += f"_mixed_x_as_{args.x_f_num}_y_as_{args.y_f_num}"
                 # tr_data_dir = f'./data/train_Samsung_SNU_patches_whole_set10to1_divided_by_fnum_setnum.hdf5'
                 # te_data_dir = f'./data/test_Samsung_SNU_patches_whole_set10to1_divided_by_fnum_setnum.hdf5'
 
@@ -106,11 +100,13 @@ if __name__ == '__main__':
         save_file_name = ''
     elif args.model_type == 'PGE_Net':
         save_file_name += f"_cropsize_{args.crop_size}_vst_{args.vst_version}"
-        args.neptune_logger['Network'] = 'PGE_Net'
+        args.logger.config.update({'Network' : 'PGE_Net'})
     elif args.model_type == 'FBI_Net':
         save_file_name += '_layers_x' + str(args.num_layers) + '_filters_x' + str(args.num_filters)+ '_cropsize_' + str(args.crop_size)
-        args.neptune_logger['Network'] = 'FBI_Net'
-    args.neptune_logger['save_filename'] = save_file_name
+        args.logger.config.update({'Network' : 'FBI_Net'})
+    args.logger.config.update({'save_filename' : save_file_name})
+
+    args.logger.config.update({'args' : args})
     print ('save_file_name : ', save_file_name)
     # Initialize model and train
     output_folder = './output_log'
@@ -124,7 +120,7 @@ if __name__ == '__main__':
         sys.stderr = f
         sys.stdout = f
     
-    args.neptune_logger['params']= args
+    args.logger.config = args
     if args.model_type != 'PGE_Net':
         train = Train_FBI(_tr_data_dir=tr_data_dir, _te_data_dir=te_data_dir, _save_file_name = save_file_name,  _args = args)
     else:
@@ -135,5 +131,3 @@ if __name__ == '__main__':
     if args.test is False:
         f.close()   
     print ('Finsh training - save_file_name : ', save_file_name)
-    if args.log_off is False:
-        args.neptune_logger.stop()
