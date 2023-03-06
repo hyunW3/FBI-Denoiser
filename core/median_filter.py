@@ -68,12 +68,21 @@ def init_median_filter_model(kernel_size =11, repeat : int = 3):
     model = median_filter_architecture(layer, repeat=repeat)
     return model
 
+def apply_median_filter_gpu_simple_keep_gpu(img,kernel_size=11, repeat : int = 3,time_log=False):
+    img = torch.Tensor(img).cuda()
+    model = init_median_filter_model(kernel_size=kernel_size, repeat=repeat).cuda()
+    while len(img.size()) < 4 :
+        img = torch.unsqueeze(img,dim=0) # expand_dims(img,axis=0)
+    while len(img.size()) > 4 :
+        img = torch.squeeze(img,dim=0) # expand_dims(img,axis=0)
+    img = model(img)
+    return img[0]
 def apply_median_filter_gpu_simple(img,kernel_size=11, repeat : int = 3,time_log=False):
     model = init_median_filter_model(kernel_size=kernel_size, repeat=repeat).cuda()
     while len(img.shape) <= 3 :
         img = np.expand_dims(img,axis=0)
     img = torch.Tensor(img).cuda()
-    print(img.shape)
+    # print(img.shape)
     if time_log is True:
         present_time = time.time()
     img = model(img)

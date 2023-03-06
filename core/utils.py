@@ -24,6 +24,7 @@ from scipy.ndimage import median_filter
 from skimage.metrics import *
 from skimage.metrics import peak_signal_noise_ratio as compare_psnr
 from skimage.metrics import structural_similarity as compare_ssim
+from .median_filter import apply_median_filter_gpu_simple_keep_gpu
 
 class TrdataLoader():
 
@@ -49,11 +50,11 @@ class TrdataLoader():
                         continue
                     
                     if self.noisy_arr is None:
-                        self.noisy_arr = self.data[set_num][f'{self.args.x_f_num}']
-                        self.clean_arr = self.data[set_num][f'{self.args.y_f_num}']
+                        self.noisy_arr = self.data[set_num][f'{self.args.x_f_num}'][:3600]
+                        self.clean_arr = self.data[set_num][f'{self.args.y_f_num}'][:3600]
                     else:
-                        self.noisy_arr = np.concatenate((self.noisy_arr,self.data[set_num][f'{self.args.x_f_num}']),axis=0)
-                        self.clean_arr = np.concatenate((self.clean_arr,self.data[set_num][f'{self.args.y_f_num}']),axis=0)
+                        self.noisy_arr = np.concatenate((self.noisy_arr,self.data[set_num][f'{self.args.x_f_num}'][:3600]),axis=0)
+                        self.clean_arr = np.concatenate((self.clean_arr,self.data[set_num][f'{self.args.y_f_num}'][:3600]),axis=0)
                         
                     print(f'===Tr loader {set_num} {self.args.x_f_num} vs {self.args.y_f_num}===')
                     print(f'{self.noisy_arr.shape[0]}/{self.clean_arr.shape[0]}  images are loaded')
@@ -169,12 +170,11 @@ class TrdataLoader():
                 noisy_patch = noisy_img[rand_x*2 : rand_x*2 + self.args.crop_size, rand_y*2 : rand_y*2 + self.args.crop_size].reshape(1, self.args.crop_size, self.args.crop_size)
 
             
+
             if self.args.loss_function == 'MSE':
             
                 source = torch.from_numpy(noisy_patch.copy())
                 target = torch.from_numpy(clean_patch.copy())
-                
-                return source, target
             
             elif self.args.loss_function == 'MSE_Affine' or self.args.loss_function == 'N2V' or self.args.loss_function == 'Noise_est' or self.args.loss_function == 'EMSE_Affine':
                 
@@ -182,7 +182,10 @@ class TrdataLoader():
                 target = torch.from_numpy(clean_patch.copy())
                 
                 target = torch.cat([source,target], dim = 0) # (512,256) -> (2,256,256)
-                return source, target
+            if self.args.apply_median_filter_input:
+                source = apply_median_filter_gpu_simple_keep_gpu(source)
+                target = apply_median_filter_gpu_simple_keep_gpu(target)
+            return source, target
 
         else: ## real data
 
@@ -220,7 +223,7 @@ class TedataLoader():
         if self.args.integrate_all_set is True:
             
             noisy_f_num_list = ['F01','F02','F04','F08','F16','F32']
-            if self.args.individual_noisy_input is True:
+            if self.args.individual_noisy_input is True and self.args.test_wholedataset is False:
                 #for set_num_idx in range(1,10+1):
                     #set_num = f"SET{set_num_idx:02d}"
                 for set_num in self.data.keys():
@@ -275,7 +278,7 @@ class TedataLoader():
                 dataset_path = "./data/test_Samsung_SNU_patches_SET01020304_divided_by_fnum_setnum.hdf5" 
                 data_dict = h5py.File(dataset_path, "r")
                 
-                img_len = 100
+                img_len = 50
                 print("test wholedataset ",set_num_list)
                 for set_num in set_num_list:
                     set_num_idx = int(set_num[3:])
@@ -318,6 +321,9 @@ class TedataLoader():
         if self.args.loss_function == 'MSE_Affine' or self.args.loss_function == 'N2V':
             target = torch.cat([source,target], dim = 0)
 
+        if self.args.apply_median_filter_input:
+            source = apply_median_filter_gpu_simple_keep_gpu(source)
+            target = apply_median_filter_gpu_simple_keep_gpu(target)
         return source, target
     
 def get_PSNR(X, X_hat):
