@@ -32,6 +32,17 @@ class Semi_BSN(nn.Module):
         x = self.conv1(x)
         
         return x     
+
+class No_BSN(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super(No_BSN, self).__init__()
+       
+        self.conv1 = nn.Conv2d(in_channels=in_ch, out_channels=out_ch, padding = 1, kernel_size = 3)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        
+        return x    
 class New1(nn.Module):
     def __init__(self, in_ch, out_ch):
         super(New1, self).__init__()
@@ -135,9 +146,9 @@ class Receptive_attention(nn.Module):
             output_residual = self.gaussian(output_residual)
             output_residual = self.sigmoid(output_residual).permute((1,0,2,3)).unsqueeze(-1)
         
+        
         output = torch.sum(receptive * output_residual, dim = 0)
         output = self.activation3(output)
-        
         return output
     
 class New1_layer(nn.Module):
@@ -151,17 +162,26 @@ class New1_layer(nn.Module):
         if BSN_type["type"] == 'normal-BSN':
             # print("normal-BSN")
             self.new1 = New1(in_ch,out_ch).cuda()
-        else :
+        elif BSN_type["type"] == 'semi-BSN':
             self.new1 = Semi_BSN(in_ch,out_ch,layer_type = BSN_type["type"], layer_param = BSN_type["param"]).cuda()
+        elif BSN_type['type'] == 'no-BSN':
+            self.new1 = No_BSN(in_ch,out_ch).cuda()
+        else :
+            raise ValueError('BSN_type is not defined',BSN_type["type"])
+    
         if case == 'case1' or case == 'case2' or case == 'case7' or case == 'FBI_Net':
             self.residual_module = Residual_module(out_ch, mul)
             
         self.activation_new1 = nn.PReLU(in_ch,0).cuda()
     def train(self):
         if self.BSN_type != 'normal-BSN':
+            if self.BSN_type  == 'no-BSN':
+                raise ValueError('Unexpected call for ',self.BSN_type )
             self.new1.train()
     def eval(self):
         if self.BSN_type != 'normal-BSN':
+            if self.BSN_type  == 'no-BSN':
+                raise ValueError('Unexpected call for ',self.BSN_type )
             self.new1.eval()
 
     def forward(self, x):

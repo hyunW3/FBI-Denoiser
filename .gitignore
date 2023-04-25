@@ -17,6 +17,7 @@ denoise_and_get_CD/result_data
 
 .ipynb_checkpoints
 
+*.gif
 *.hdf5
 *.pyc
 *.hdf5
@@ -25,6 +26,7 @@ denoise_and_get_CD/result_data
 *.ipynb_checkpoints/
 *.txt
 *.csv
+*.zip
 *log*/*
 
 neptune_setting.py

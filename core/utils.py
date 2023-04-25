@@ -68,12 +68,17 @@ class TrdataLoader():
                 if self.args.wholedataset_version == 'v1' and self.args.y_f_num in ['F16','F32','F64']:
                     # take 2400 patches for fnum
                     set_num_list = ['SET01','SET02','SET03','SET04'] + set_num_list
-                    mask_len_dict = {'F16': 540} # TODO : option for F32,F64 
+                    mask_len_dict = {'F16': 540, 'F32' : 2160//5, 'F64' : 2160//6} 
+                    # TODO : option for F32,F64 -> 2160 / number of fnum
                      #{'F16' : 540, 'F08' : 1200, 'F04' : 1800, 'F02' : 3600} 
                     mask_len = mask_len_dict[self.args.y_f_num]
                     mask_v1 = [False] * len(data_dict['SET01']['F08']) # 7200
                     image_step = 480
                     num_crop = 144 #mask_len//15
+                    if self.args.y_f_num == 'F32':
+                        num_crop = num_crop // 2
+                    elif self.args.y_f_num == 'F64':
+                        num_crop = num_crop // 3
                     for idx in range(0,len(mask_v1),image_step):
                         # print(idx)
                         mask_v1[idx:idx+num_crop] = [True] * num_crop
@@ -81,7 +86,9 @@ class TrdataLoader():
                     mask_v2[:mask_len] = [True] * mask_len
                 elif self.args.wholedataset_version == 'v2':
                     # take 720 patches for fnum 
-                    mask_len_dict = {'F16' : 900, 'F08' : 1200, 'F04' : 1800, 'F02' : 3600} 
+                    mask_len_dict = {'F64' : 3600//6, 
+                                     'F32' : 3600//5,'F16' : 3600//4, 'F08' : 1200,
+                                      'F04' : 1800, 'F02' : 3600} 
                     mask_len = mask_len_dict[self.args.y_f_num]
                     mask_v2 = [False] * len(self.data['SET05']['F01'])# 3600
                     mask_v2[:mask_len] = [True] * mask_len
@@ -176,14 +183,14 @@ class TrdataLoader():
                 source = torch.from_numpy(noisy_patch.copy())
                 target = torch.from_numpy(clean_patch.copy())
             
-            elif self.args.loss_function == 'MSE_Affine' or self.args.loss_function == 'N2V' or self.args.loss_function == 'Noise_est' or self.args.loss_function == 'EMSE_Affine':
+            elif self.args.loss_function[:10] == 'MSE_Affine' or self.args.loss_function == 'N2V' or self.args.loss_function == 'Noise_est' or self.args.loss_function == 'EMSE_Affine':
                 
                 source = torch.from_numpy(noisy_patch.copy())
                 target = torch.from_numpy(clean_patch.copy())
                 
                 target = torch.cat([source,target], dim = 0) # (512,256) -> (2,256,256)
-            if self.args.apply_median_filter_input:
-                source = apply_median_filter_gpu_simple_keep_gpu(source)
+            if self.args.apply_median_filter_target:
+                # source = apply_median_filter_gpu_simple_keep_gpu(source)
                 target = apply_median_filter_gpu_simple_keep_gpu(target)
             return source, target
 
@@ -221,7 +228,7 @@ class TedataLoader():
         self.noisy_arr, self.clean_arr = None, None
         
         if self.args.integrate_all_set is True:
-            
+            img_len = 50
             noisy_f_num_list = ['F01','F02','F04','F08','F16','F32']
             if self.args.individual_noisy_input is True and self.args.test_wholedataset is False:
                 #for set_num_idx in range(1,10+1):
@@ -235,7 +242,7 @@ class TedataLoader():
                         noisy_f_num_list = ['F08','F16','F32']
                     
                     if self.args.test_wholedataset is True:
-                        img_len = 100
+                        
                         for noisy_f_num in noisy_f_num_list:   
                             if self.noisy_arr is None:
                                 # self.noisy_arr = self.data[set_num][f'{self.args.x_f_num}']
@@ -259,7 +266,7 @@ class TedataLoader():
                     else:
                         noisy_f_num_list = ['F08','F16','F32']
                     if self.args.test_wholedataset is True:
-                        img_len = 100
+                        
                         for noisy_f_num in noisy_f_num_list:    
                             if self.noisy_arr is None:
                                 self.noisy_arr = self.data[set_num][noisy_f_num][:img_len]
@@ -278,7 +285,6 @@ class TedataLoader():
                 dataset_path = "./data/test_Samsung_SNU_patches_SET01020304_divided_by_fnum_setnum.hdf5" 
                 data_dict = h5py.File(dataset_path, "r")
                 
-                img_len = 50
                 print("test wholedataset ",set_num_list)
                 for set_num in set_num_list:
                     set_num_idx = int(set_num[3:])
@@ -317,12 +323,12 @@ class TedataLoader():
 
         source = torch.from_numpy(source.reshape(1,source.shape[0],source.shape[1])).float().cuda()
         target = torch.from_numpy(target.reshape(1,target.shape[0],target.shape[1])).float().cuda()
-        
-        if self.args.loss_function == 'MSE_Affine' or self.args.loss_function == 'N2V':
+        # print("get_item : ",self.args.loss_function[:10] )
+        if self.args.loss_function[:10] == 'MSE_Affine' or self.args.loss_function == 'N2V':
             target = torch.cat([source,target], dim = 0)
 
-        if self.args.apply_median_filter_input:
-            source = apply_median_filter_gpu_simple_keep_gpu(source)
+        if self.args.apply_median_filter_target:
+            # source = apply_median_filter_gpu_simple_keep_gpu(source)
             target = apply_median_filter_gpu_simple_keep_gpu(target)
         return source, target
     

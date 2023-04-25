@@ -1,0 +1,419 @@
+num of test images :  200
+data name : fivek
+image : 00 ->	 alpha : 0.0140813813, sigma : 2.74251e-05 
+/mnt/ssd/hyun/fbi-net/FBI-Denoiser/core/utils.py:328: UserWarning: torch.symeig is deprecated in favor of torch.linalg.eigh and will be removed in a future PyTorch release.
+The default behavior has changed from using the upper triangular portion of the matrix by default to using the lower triangular portion.
+L, _ = torch.symeig(A, upper=upper)
+should be replaced with
+L = torch.linalg.eigvalsh(A, UPLO='U' if upper else 'L')
+and
+L, V = torch.symeig(A, eigenvectors=True)
+should be replaced with
+L, V = torch.linalg.eigh(A, UPLO='U' if upper else 'L') (Triggered internally at  ../aten/src/ATen/native/BatchLinearAlgebra.cpp:3029.)
+  sig_value,_=torch.symeig(sigma_X,eigenvectors=True)
+estimated gaussian_noise  : 1.0794960260391235
+image : 01 ->	 alpha : 0.0124420272, sigma : 2.8636e-06 
+estimated gaussian_noise  : 1.0901395082473755
+image : 02 ->	 alpha : 0.0128734838, sigma : 6.2105e-06 
+estimated gaussian_noise  : 1.0899735689163208
+image : 03 ->	 alpha : 0.0139315063, sigma : 2.7506e-06 
+estimated gaussian_noise  : 1.1148005723953247
+image : 04 ->	 alpha : 0.0118017551, sigma : 2.2674e-06 
+estimated gaussian_noise  : 1.0722568035125732
+image : 05 ->	 alpha : 0.0142919086, sigma : 5.2781e-06 
+estimated gaussian_noise  : 1.1206520795822144
+image : 06 ->	 alpha : 0.0135566005, sigma : 5.083e-06 
+estimated gaussian_noise  : 1.1018086671829224
+image : 07 ->	 alpha : 0.0134721147, sigma : 3.8153e-06 
+estimated gaussian_noise  : 1.0798550844192505
+image : 08 ->	 alpha : 0.0138231516, sigma : 4.3378e-06 
+estimated gaussian_noise  : 1.1043789386749268
+image : 09 ->	 alpha : 0.0134118553, sigma : 2.5244e-06 
+estimated gaussian_noise  : 1.1075598001480103
+image : 10 ->	 alpha : 0.0129593555, sigma : 1.05179e-05 
+estimated gaussian_noise  : 1.0901707410812378
+image : 11 ->	 alpha : 0.0134162381, sigma : 3.4802e-06 
+estimated gaussian_noise  : 1.1021159887313843
+image : 12 ->	 alpha : 0.0131941708, sigma : 2.3456e-06 
+estimated gaussian_noise  : 1.1001530885696411
+image : 13 ->	 alpha : 0.0144324983, sigma : 2.8182e-06 
+estimated gaussian_noise  : 1.108330249786377
+image : 14 ->	 alpha : 0.0119799469, sigma : 4.8325e-06 
+estimated gaussian_noise  : 1.0768656730651855
+image : 15 ->	 alpha : 0.0122867981, sigma : 2.5948e-06 
+estimated gaussian_noise  : 1.0878784656524658
+image : 16 ->	 alpha : 0.0122376736, sigma : 2.2729e-06 
+estimated gaussian_noise  : 1.07943594455719
+image : 17 ->	 alpha : 0.0134303914, sigma : 2.5428e-06 
+estimated gaussian_noise  : 1.1053794622421265
+image : 18 ->	 alpha : 0.0137346108, sigma : 2.5395e-06 
+estimated gaussian_noise  : 1.1117757558822632
+image : 19 ->	 alpha : 0.0130521851, sigma : 4.4914e-06 
+estimated gaussian_noise  : 1.0911027193069458
+image : 20 ->	 alpha : 0.0131008849, sigma : 1.37044e-05 
+estimated gaussian_noise  : 1.0961294174194336
+image : 21 ->	 alpha : 0.0122928973, sigma : 9.9677e-06 
+estimated gaussian_noise  : 1.0876606702804565
+image : 22 ->	 alpha : 0.011097353, sigma : 1.40927e-05 
+estimated gaussian_noise  : 1.0478341579437256
+image : 23 ->	 alpha : 0.0135300634, sigma : 7.9525e-06 
+estimated gaussian_noise  : 1.0720230340957642
+image : 24 ->	 alpha : 0.0132613331, sigma : 4.4308e-06 
+estimated gaussian_noise  : 1.101981520652771
+image : 25 ->	 alpha : 0.0145310163, sigma : 2.7927e-06 
+estimated gaussian_noise  : 1.1149340867996216
+image : 26 ->	 alpha : 0.0134249451, sigma : 3.1706e-06 
+estimated gaussian_noise  : 1.1044659614562988
+image : 27 ->	 alpha : 0.0121395737, sigma : 2.5357e-06 
+estimated gaussian_noise  : 1.0789015293121338
+image : 28 ->	 alpha : 0.011556427, sigma : 3.9293e-06 
+estimated gaussian_noise  : 1.0904027223587036
+image : 29 ->	 alpha : 0.013159072, sigma : 2.3299e-06 
+estimated gaussian_noise  : 1.1017957925796509
+image : 30 ->	 alpha : 0.0135815181, sigma : 2.8512e-06 
+estimated gaussian_noise  : 1.1073330640792847
+image : 31 ->	 alpha : 0.010992175, sigma : 3.2285e-06 
+estimated gaussian_noise  : 1.0492559671401978
+image : 32 ->	 alpha : 0.0114187822, sigma : 3.2836e-06 
+estimated gaussian_noise  : 1.0620968341827393
+image : 33 ->	 alpha : 0.0140078124, sigma : 4.4772e-06 
+estimated gaussian_noise  : 1.11747407913208
+image : 34 ->	 alpha : 0.0142236836, sigma : 6.7732e-06 
+estimated gaussian_noise  : 1.1111907958984375
+image : 35 ->	 alpha : 0.0133938342, sigma : 3.00016e-05 
+estimated gaussian_noise  : 1.0849686861038208
+image : 36 ->	 alpha : 0.0082061514, sigma : 2.85952e-05 
+estimated gaussian_noise  : 1.0224699974060059
+image : 37 ->	 alpha : 0.01270176, sigma : 4.8314e-06 
+estimated gaussian_noise  : 1.0769352912902832
+image : 38 ->	 alpha : 0.0122278593, sigma : 4.0893e-06 
+estimated gaussian_noise  : 1.0836328268051147
+image : 39 ->	 alpha : 0.0142082442, sigma : 4.5511e-06 
+estimated gaussian_noise  : 1.1057286262512207
+image : 40 ->	 alpha : 0.0125655327, sigma : 3.37463e-05 
+estimated gaussian_noise  : 1.0490509271621704
+image : 41 ->	 alpha : 0.0140452236, sigma : 3.8471e-06 
+estimated gaussian_noise  : 1.101917028427124
+image : 42 ->	 alpha : 0.0137675488, sigma : 7.8877e-06 
+estimated gaussian_noise  : 1.0881351232528687
+image : 43 ->	 alpha : 0.0128548797, sigma : 2.3141e-06 
+estimated gaussian_noise  : 1.0962610244750977
+image : 44 ->	 alpha : 0.0119476216, sigma : 4.207e-06 
+estimated gaussian_noise  : 1.0824679136276245
+image : 45 ->	 alpha : 0.0128817596, sigma : 4.1671e-06 
+estimated gaussian_noise  : 1.0996853113174438
+image : 46 ->	 alpha : 0.0121002691, sigma : 3.5938e-06 
+estimated gaussian_noise  : 1.081606149673462
+image : 47 ->	 alpha : 0.0133985374, sigma : 3.3688e-06 
+estimated gaussian_noise  : 1.1095770597457886
+image : 48 ->	 alpha : 0.0118379053, sigma : 5.6668e-06 
+estimated gaussian_noise  : 1.0700392723083496
+image : 49 ->	 alpha : 0.0086993705, sigma : 1.29818e-05 
+estimated gaussian_noise  : 1.070385217666626
+image : 50 ->	 alpha : 0.0136708487, sigma : 4.7857e-06 
+estimated gaussian_noise  : 1.1023610830307007
+image : 51 ->	 alpha : 0.0131359752, sigma : 3.9628e-06 
+estimated gaussian_noise  : 1.080191731452942
+image : 52 ->	 alpha : 0.0130705889, sigma : 3.074e-06 
+estimated gaussian_noise  : 1.0975077152252197
+image : 53 ->	 alpha : 0.0135190524, sigma : 3.8408e-06 
+estimated gaussian_noise  : 1.0949617624282837
+image : 54 ->	 alpha : 0.0132124778, sigma : 9.1448e-06 
+estimated gaussian_noise  : 1.0886167287826538
+image : 55 ->	 alpha : 0.0136446599, sigma : 1.75674e-05 
+estimated gaussian_noise  : 1.1055935621261597
+image : 56 ->	 alpha : 0.013192106, sigma : 8.7734e-06 
+estimated gaussian_noise  : 1.0915162563323975
+image : 57 ->	 alpha : 0.0144543685, sigma : 2.939e-06 
+estimated gaussian_noise  : 1.1121718883514404
+image : 58 ->	 alpha : 0.0119525734, sigma : 2.9327e-06 
+estimated gaussian_noise  : 1.0525554418563843
+image : 59 ->	 alpha : 0.011145968, sigma : 2.5612e-06 
+estimated gaussian_noise  : 1.0558760166168213
+image : 60 ->	 alpha : 0.0134198871, sigma : 3.2468e-06 
+estimated gaussian_noise  : 1.1098960638046265
+image : 61 ->	 alpha : 0.0132699218, sigma : 3.0586e-06 
+estimated gaussian_noise  : 1.100832462310791
+image : 62 ->	 alpha : 0.0141794905, sigma : 5.1012e-06 
+estimated gaussian_noise  : 1.1119953393936157
+image : 63 ->	 alpha : 0.0143870153, sigma : 7.0842e-06 
+estimated gaussian_noise  : 1.1008954048156738
+image : 64 ->	 alpha : 0.0120877475, sigma : 1.06318e-05 
+estimated gaussian_noise  : 1.0924736261367798
+image : 65 ->	 alpha : 0.0125206895, sigma : 2.8267e-06 
+estimated gaussian_noise  : 1.0674800872802734
+image : 66 ->	 alpha : 0.0129039064, sigma : 1.08633e-05 
+estimated gaussian_noise  : 1.0897421836853027
+image : 67 ->	 alpha : 0.0123883067, sigma : 3.0183e-06 
+estimated gaussian_noise  : 1.0577080249786377
+image : 68 ->	 alpha : 0.0121375239, sigma : 2.1632e-06 
+estimated gaussian_noise  : 1.0794517993927002
+image : 69 ->	 alpha : 0.0140473945, sigma : 2.5585e-06 
+estimated gaussian_noise  : 1.114333152770996
+image : 70 ->	 alpha : 0.0123057887, sigma : 2.7182e-06 
+estimated gaussian_noise  : 1.0869998931884766
+image : 71 ->	 alpha : 0.0118865017, sigma : 3.3064e-06 
+estimated gaussian_noise  : 1.0453413724899292
+image : 72 ->	 alpha : 0.0117987152, sigma : 2.9906e-06 
+estimated gaussian_noise  : 1.074191689491272
+image : 73 ->	 alpha : 0.0134241832, sigma : 2.5326e-06 
+estimated gaussian_noise  : 1.1040658950805664
+image : 74 ->	 alpha : 0.0131223742, sigma : 2.927e-06 
+estimated gaussian_noise  : 1.0665912628173828
+image : 75 ->	 alpha : 0.0141595257, sigma : 1.23525e-05 
+estimated gaussian_noise  : 1.083491563796997
+image : 76 ->	 alpha : 0.0127829108, sigma : 5.9715e-06 
+estimated gaussian_noise  : 1.0867558717727661
+image : 77 ->	 alpha : 0.01452085, sigma : 2.8377e-06 
+estimated gaussian_noise  : 1.1007461547851562
+image : 78 ->	 alpha : 0.0112443492, sigma : 2.5737e-06 
+estimated gaussian_noise  : 1.0551625490188599
+image : 79 ->	 alpha : 0.0130721703, sigma : 2.3593e-06 
+estimated gaussian_noise  : 1.1012078523635864
+image : 80 ->	 alpha : 0.0144619653, sigma : 2.8605e-06 
+estimated gaussian_noise  : 1.109658122062683
+image : 81 ->	 alpha : 0.0143507607, sigma : 3.8255e-06 
+estimated gaussian_noise  : 1.0862914323806763
+image : 82 ->	 alpha : 0.0124498261, sigma : 3.5026e-06 
+estimated gaussian_noise  : 1.0537341833114624
+image : 83 ->	 alpha : 0.0132622123, sigma : 1.56361e-05 
+estimated gaussian_noise  : 1.0980806350708008
+image : 84 ->	 alpha : 0.0130853476, sigma : 2.48626e-05 
+estimated gaussian_noise  : 1.101144552230835
+image : 85 ->	 alpha : 0.0116158659, sigma : 2.3855e-06 
+estimated gaussian_noise  : 1.0764226913452148
+image : 86 ->	 alpha : 0.0125442483, sigma : 2.3039e-06 
+estimated gaussian_noise  : 1.0855894088745117
+image : 87 ->	 alpha : 0.0127631538, sigma : 2.5672e-06 
+estimated gaussian_noise  : 1.095672845840454
+image : 88 ->	 alpha : 0.0107772658, sigma : 3.4452e-06 
+estimated gaussian_noise  : 1.037430763244629
+image : 89 ->	 alpha : 0.0143604856, sigma : 7.1365e-06 
+estimated gaussian_noise  : 1.1093220710754395
+image : 90 ->	 alpha : 0.0137948887, sigma : 3.2309e-06 
+estimated gaussian_noise  : 1.099793553352356
+image : 91 ->	 alpha : 0.0120648462, sigma : 6.7574e-06 
+estimated gaussian_noise  : 1.081918478012085
+image : 92 ->	 alpha : 0.013516834, sigma : 3.3071e-06 
+estimated gaussian_noise  : 1.0818099975585938
+image : 93 ->	 alpha : 0.0120948041, sigma : 1.47098e-05 
+estimated gaussian_noise  : 1.0550732612609863
+image : 94 ->	 alpha : 0.0137923397, sigma : 5.2959e-06 
+estimated gaussian_noise  : 1.1142268180847168
+image : 95 ->	 alpha : 0.0129839741, sigma : 9.2612e-06 
+estimated gaussian_noise  : 1.095811367034912
+image : 96 ->	 alpha : 0.0137255574, sigma : 5.2344e-06 
+estimated gaussian_noise  : 1.1103966236114502
+image : 97 ->	 alpha : 0.0121518504, sigma : 7.7851e-06 
+estimated gaussian_noise  : 1.0681266784667969
+image : 98 ->	 alpha : 0.0138580315, sigma : 2.5891e-06 
+estimated gaussian_noise  : 1.104145884513855
+image : 99 ->	 alpha : 0.0118710222, sigma : 2.383e-06 
+estimated gaussian_noise  : 1.0729120969772339
+image : 100 ->	 alpha : 0.0100653265, sigma : 1.8829e-05 
+estimated gaussian_noise  : 1.091408371925354
+image : 101 ->	 alpha : 0.0109791961, sigma : 3.2119e-06 
+estimated gaussian_noise  : 1.029840111732483
+image : 102 ->	 alpha : 0.0109340977, sigma : 6.3431e-06 
+estimated gaussian_noise  : 1.0417436361312866
+image : 103 ->	 alpha : 0.0134828705, sigma : 2.6209e-06 
+estimated gaussian_noise  : 1.1029309034347534
+image : 104 ->	 alpha : 0.0123154484, sigma : 4.888e-06 
+estimated gaussian_noise  : 1.0910004377365112
+image : 105 ->	 alpha : 0.0114428662, sigma : 2.6863e-06 
+estimated gaussian_noise  : 1.0618218183517456
+image : 106 ->	 alpha : 0.0132236052, sigma : 3.5008e-06 
+estimated gaussian_noise  : 1.0998804569244385
+image : 107 ->	 alpha : 0.0136286337, sigma : 9.5015e-06 
+estimated gaussian_noise  : 1.089440941810608
+image : 108 ->	 alpha : 0.0109934965, sigma : 2.7905e-06 
+estimated gaussian_noise  : 1.0498032569885254
+image : 109 ->	 alpha : 0.0114421872, sigma : 4.7624e-06 
+estimated gaussian_noise  : 1.0679036378860474
+image : 110 ->	 alpha : 0.0124212252, sigma : 5.0588e-06 
+estimated gaussian_noise  : 1.0914353132247925
+image : 111 ->	 alpha : 0.0130710676, sigma : 5.6553e-06 
+estimated gaussian_noise  : 1.0919371843338013
+image : 112 ->	 alpha : 0.0139134899, sigma : 3.002e-06 
+estimated gaussian_noise  : 1.1003327369689941
+image : 113 ->	 alpha : 0.0119607197, sigma : 4.5804e-06 
+estimated gaussian_noise  : 1.0761672258377075
+image : 114 ->	 alpha : 0.0136858933, sigma : 2.4152e-06 
+estimated gaussian_noise  : 1.1064479351043701
+image : 115 ->	 alpha : 0.013005143, sigma : 3.6398e-06 
+estimated gaussian_noise  : 1.087670087814331
+image : 116 ->	 alpha : 0.0123929027, sigma : 8.2226e-06 
+estimated gaussian_noise  : 1.0896245241165161
+image : 117 ->	 alpha : 0.0123413792, sigma : 3.5183e-06 
+estimated gaussian_noise  : 1.0866427421569824
+image : 118 ->	 alpha : 0.0135983722, sigma : 2.8592e-06 
+estimated gaussian_noise  : 1.1049681901931763
+image : 119 ->	 alpha : 0.01296895, sigma : 4.5605e-06 
+estimated gaussian_noise  : 1.1003214120864868
+image : 120 ->	 alpha : 0.0109153092, sigma : 3.2729e-06 
+estimated gaussian_noise  : 1.0383565425872803
+image : 121 ->	 alpha : 0.0135967936, sigma : 3.757e-06 
+estimated gaussian_noise  : 1.0958213806152344
+image : 122 ->	 alpha : 0.0130306585, sigma : 4.6164e-06 
+estimated gaussian_noise  : 1.0782819986343384
+image : 123 ->	 alpha : 0.0110504013, sigma : 2.938e-06 
+estimated gaussian_noise  : 1.052489995956421
+image : 124 ->	 alpha : 0.0133448821, sigma : 6.8128e-06 
+estimated gaussian_noise  : 1.0969290733337402
+image : 125 ->	 alpha : 0.0134812649, sigma : 3.1929e-06 
+estimated gaussian_noise  : 1.079990029335022
+image : 126 ->	 alpha : 0.0125777386, sigma : 2.692e-06 
+estimated gaussian_noise  : 1.0813543796539307
+image : 127 ->	 alpha : 0.0144871557, sigma : 2.8897e-06 
+estimated gaussian_noise  : 1.11171293258667
+image : 128 ->	 alpha : 0.0132563133, sigma : 3.6292e-06 
+estimated gaussian_noise  : 1.0931795835494995
+image : 129 ->	 alpha : 0.0136930831, sigma : 2.4159e-06 
+estimated gaussian_noise  : 1.1093387603759766
+image : 130 ->	 alpha : 0.0105255535, sigma : 4.2992e-06 
+estimated gaussian_noise  : 1.0246574878692627
+image : 131 ->	 alpha : 0.0112122232, sigma : 4.5874e-06 
+estimated gaussian_noise  : 1.0505757331848145
+image : 132 ->	 alpha : 0.0136607252, sigma : 3.8773e-06 
+estimated gaussian_noise  : 1.1097315549850464
+image : 133 ->	 alpha : 0.0125760958, sigma : 3.4787e-06 
+estimated gaussian_noise  : 1.0904401540756226
+image : 134 ->	 alpha : 0.0144075621, sigma : 2.8458e-06 
+estimated gaussian_noise  : 1.1100258827209473
+image : 135 ->	 alpha : 0.0114912884, sigma : 2.552e-06 
+estimated gaussian_noise  : 1.0759493112564087
+image : 136 ->	 alpha : 0.0120347422, sigma : 4.2037e-06 
+estimated gaussian_noise  : 1.0811034440994263
+image : 137 ->	 alpha : 0.0111677153, sigma : 2.2535e-06 
+estimated gaussian_noise  : 1.0530505180358887
+image : 138 ->	 alpha : 0.013049284, sigma : 2.8103e-06 
+estimated gaussian_noise  : 1.0766311883926392
+image : 139 ->	 alpha : 0.0123972539, sigma : 3.8975e-06 
+estimated gaussian_noise  : 1.0898829698562622
+image : 140 ->	 alpha : 0.0120014586, sigma : 4.498e-06 
+estimated gaussian_noise  : 1.06291663646698
+image : 141 ->	 alpha : 0.0138698034, sigma : 3.2771e-06 
+estimated gaussian_noise  : 1.1080780029296875
+image : 142 ->	 alpha : 0.0132877193, sigma : 2.3737e-06 
+estimated gaussian_noise  : 1.1026371717453003
+image : 143 ->	 alpha : 0.0107097114, sigma : 3.862e-06 
+estimated gaussian_noise  : 1.0385421514511108
+image : 144 ->	 alpha : 0.011987539, sigma : 2.3027e-06 
+estimated gaussian_noise  : 1.0795797109603882
+image : 145 ->	 alpha : 0.0108235665, sigma : 6.5252e-06 
+estimated gaussian_noise  : 1.059110403060913
+image : 146 ->	 alpha : 0.0100576216, sigma : 4.0679e-06 
+estimated gaussian_noise  : 1.0554728507995605
+image : 147 ->	 alpha : 0.012998322, sigma : 3.5218e-06 
+estimated gaussian_noise  : 1.080820083618164
+image : 148 ->	 alpha : 0.0133829769, sigma : 2.7981e-06 
+estimated gaussian_noise  : 1.0717177391052246
+image : 149 ->	 alpha : 0.011344282, sigma : 3.1486e-06 
+estimated gaussian_noise  : 1.0514122247695923
+image : 150 ->	 alpha : 0.0115382383, sigma : 2.688e-06 
+estimated gaussian_noise  : 1.0534435510635376
+image : 151 ->	 alpha : 0.0132623361, sigma : 2.8336e-06 
+estimated gaussian_noise  : 1.0698387622833252
+image : 152 ->	 alpha : 0.0126384143, sigma : 2.3788e-06 
+estimated gaussian_noise  : 1.0915062427520752
+image : 153 ->	 alpha : 0.0144268395, sigma : 2.8377e-06 
+estimated gaussian_noise  : 1.1057226657867432
+image : 154 ->	 alpha : 0.01274468, sigma : 2.6764e-06 
+estimated gaussian_noise  : 1.0903319120407104
+image : 155 ->	 alpha : 0.0133038769, sigma : 1.13463e-05 
+estimated gaussian_noise  : 1.1084307432174683
+image : 156 ->	 alpha : 0.0135137588, sigma : 3.0468e-06 
+estimated gaussian_noise  : 1.1054424047470093
+image : 157 ->	 alpha : 0.0120039433, sigma : 3.8991e-06 
+estimated gaussian_noise  : 1.0758986473083496
+image : 158 ->	 alpha : 0.011283474, sigma : 3.1001e-06 
+estimated gaussian_noise  : 1.0535894632339478
+image : 159 ->	 alpha : 0.0106657268, sigma : 3.4914e-06 
+estimated gaussian_noise  : 1.0367915630340576
+image : 160 ->	 alpha : 0.0138902534, sigma : 8.7082e-06 
+estimated gaussian_noise  : 1.1111739873886108
+image : 161 ->	 alpha : 0.012321936, sigma : 3.7311e-06 
+estimated gaussian_noise  : 1.0859630107879639
+image : 162 ->	 alpha : 0.0143054407, sigma : 6.3206e-06 
+estimated gaussian_noise  : 1.1076339483261108
+image : 163 ->	 alpha : 0.0129419705, sigma : 2.8919e-06 
+estimated gaussian_noise  : 1.1007176637649536
+image : 164 ->	 alpha : 0.0144453775, sigma : 2.8201e-06 
+estimated gaussian_noise  : 1.1024250984191895
+image : 165 ->	 alpha : 0.0136891995, sigma : 2.907e-06 
+estimated gaussian_noise  : 1.1052682399749756
+image : 166 ->	 alpha : 0.0121402405, sigma : 3.6609e-06 
+estimated gaussian_noise  : 1.0820263624191284
+image : 167 ->	 alpha : 0.0140793473, sigma : 2.9741e-06 
+estimated gaussian_noise  : 1.1121882200241089
+image : 168 ->	 alpha : 0.0136196362, sigma : 3.9186e-06 
+estimated gaussian_noise  : 1.1084378957748413
+image : 169 ->	 alpha : 0.0122298952, sigma : 6.4789e-06 
+estimated gaussian_noise  : 1.0934116840362549
+image : 170 ->	 alpha : 0.0135029685, sigma : 2.3743e-06 
+estimated gaussian_noise  : 1.1039891242980957
+image : 171 ->	 alpha : 0.0135160796, sigma : 7.3075e-06 
+estimated gaussian_noise  : 1.0881327390670776
+image : 172 ->	 alpha : 0.0128617287, sigma : 7.8134e-06 
+estimated gaussian_noise  : 1.0960972309112549
+image : 173 ->	 alpha : 0.01377213, sigma : 2.6584e-06 
+estimated gaussian_noise  : 1.1099767684936523
+image : 174 ->	 alpha : 0.012034921, sigma : 2.6101e-06 
+estimated gaussian_noise  : 1.0816985368728638
+image : 175 ->	 alpha : 0.0121979043, sigma : 3.8935e-06 
+estimated gaussian_noise  : 1.0587266683578491
+image : 176 ->	 alpha : 0.0140537489, sigma : 2.3945e-06 
+estimated gaussian_noise  : 1.1161350011825562
+image : 177 ->	 alpha : 0.0115542915, sigma : 5.5513e-06 
+estimated gaussian_noise  : 1.0651922225952148
+image : 178 ->	 alpha : 0.0120532345, sigma : 4.9223e-06 
+estimated gaussian_noise  : 1.0592689514160156
+image : 179 ->	 alpha : 0.0133847855, sigma : 2.6287e-06 
+estimated gaussian_noise  : 1.1029491424560547
+image : 180 ->	 alpha : 0.012431426, sigma : 8.802e-06 
+estimated gaussian_noise  : 1.083734154701233
+image : 181 ->	 alpha : 0.0128244814, sigma : 1.09374e-05 
+estimated gaussian_noise  : 1.0714951753616333
+image : 182 ->	 alpha : 0.0133504728, sigma : 3.5749e-06 
+estimated gaussian_noise  : 1.1047886610031128
+image : 183 ->	 alpha : 0.0128884017, sigma : 5.1651e-06 
+estimated gaussian_noise  : 1.070605754852295
+image : 184 ->	 alpha : 0.0125823058, sigma : 4.2227e-06 
+estimated gaussian_noise  : 1.0859229564666748
+image : 185 ->	 alpha : 0.012529349, sigma : 7.1935e-06 
+estimated gaussian_noise  : 1.0844913721084595
+image : 186 ->	 alpha : 0.0125623057, sigma : 2.8298e-06 
+estimated gaussian_noise  : 1.059843897819519
+image : 187 ->	 alpha : 0.0138771571, sigma : 2.6802e-06 
+estimated gaussian_noise  : 1.1121430397033691
+image : 188 ->	 alpha : 0.0112718418, sigma : 2.312e-06 
+estimated gaussian_noise  : 1.056280255317688
+image : 189 ->	 alpha : 0.0129724871, sigma : 2.942e-06 
+estimated gaussian_noise  : 1.0930345058441162
+image : 190 ->	 alpha : 0.0125031397, sigma : 2.9753e-06 
+estimated gaussian_noise  : 1.0868701934814453
+image : 191 ->	 alpha : 0.0138587402, sigma : 2.4089e-06 
+estimated gaussian_noise  : 1.1090816259384155
+image : 192 ->	 alpha : 0.0130692357, sigma : 8.214e-06 
+estimated gaussian_noise  : 1.0901695489883423
+image : 193 ->	 alpha : 0.0149135077, sigma : 5.10798e-05 
+estimated gaussian_noise  : 1.0670803785324097
+image : 194 ->	 alpha : 0.0117130317, sigma : 2.1812e-06 
+estimated gaussian_noise  : 1.0702879428863525
+image : 195 ->	 alpha : 0.0132412501, sigma : 2.3897e-06 
+estimated gaussian_noise  : 1.1068090200424194
+image : 196 ->	 alpha : 0.0105333328, sigma : 3.7761e-06 
+estimated gaussian_noise  : 1.029133915901184
+image : 197 ->	 alpha : 0.0143896714, sigma : 3.0121e-06 
+estimated gaussian_noise  : 1.1147019863128662
+image : 198 ->	 alpha : 0.0132988803, sigma : 3.3335e-06 
+estimated gaussian_noise  : 1.0778987407684326
+image : 199 ->	 alpha : 0.0120064747, sigma : 2.2098e-06 
+estimated gaussian_noise  : 1.0826833248138428
+Mean(alpha) :  0.012784133 Mean(beta) :  5.4365e-06
+Traceback (most recent call last):
+  File "/mnt/ssd/hyun/fbi-net/FBI-Denoiser/evaluate_pge.py", line 125, in <module>
+    test_pge.eval()
+  File "/mnt/ssd/hyun/fbi-net/FBI-Denoiser/core/test_pge.py", line 80, in eval
+    if self.args.test.alpha != 0:
+AttributeError: 'bool' object has no attribute 'alpha'

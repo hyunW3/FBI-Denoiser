@@ -78,15 +78,15 @@ def find_center(img,debug=False):
     # print(center_region.shape,cX,cY)
     try:
         b_cnt = np.bincount(center_region)
+        circle_value = np.argmax(b_cnt)
     except:
+        return (None,None),None
+        # plt.imshow(img)
+        # plt.scatter(cX,cY)
+        # plt.pause(0.01)
+        # plt.imshow(img[cY-fill_range:cY+fill_range,cX-fill_range:cX+fill_range])
+        # raise ValueError(center_region,b_cnt)
         
-        plt.imshow(img)
-        plt.scatter(cX,cY)
-        plt.pause(0.01)
-        plt.imshow(img[cY-fill_range:cY+fill_range,cX-fill_range:cX+fill_range])
-        raise ValueError(center_region)
-        
-    circle_value = np.argmax(b_cnt)
     
     img[cY-fill_range:cY+fill_range,cX-fill_range:cX+fill_range] = circle_value
     img[img != circle_value] = 0
@@ -200,16 +200,17 @@ def find_possible_section(img):
                 possible_section.append([i,j])
     return possible_section
 
-def segmentation_with_masking(img,img_info=None,print_plt = False):
+def segmentation_with_masking(img,img_info,hole_img_info=None,print_plt = False):
     assert img.dtype == 'uint8'
     
-    if img_info is None:
+    if hole_img_info is None:
         possible_section = find_possible_section(img)
     else :
-        with open(f'./result_data/hole_info_F16_v2.txt', 'r') as f:
-            hole_info = json.load(f)
-        set_num, f_num, idx = img_info.values()
-        possible_section = hole_info[set_num]['F08'][idx]
+        # with open(f'../tmp/result_data/hole_info_F16_v2.txt', 'r') as f:
+        #     hole_info = json.load(f)
+        set_num, f_num, idx = img_info['set_num'], img_info['f_num'], img_info['idx']
+        print(set_num, f_num, idx)
+        possible_section = hole_img_info#[set_num]['F08'][idx]
     masked_img = img.copy()
     pad = 40
     for i,j in possible_section:
@@ -234,7 +235,7 @@ def segmentation_with_masking(img,img_info=None,print_plt = False):
         plt.title("masking watershed")
         plt.imshow(masked_img_segmentation)
         
-    return masked_img_segmentation
+    return masked_img_segmentation, masked_img
 
 #########################################################################
 ## deprecated 

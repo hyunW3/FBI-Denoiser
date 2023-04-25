@@ -7,7 +7,7 @@ import numpy as np
 import scipy.io as sio
 from datetime import date
 from .utils import TedataLoader, TrdataLoader, get_PSNR, get_SSIM, inverse_gat, gat, normalize_after_gat_torch
-from .loss_functions import mse_bias, mse_affine, emse_affine
+from .loss_functions import mse_bias, mse_affine, emse_affine, mse_affine_with_tv
 from .logger import Logger
 from .models import New_model
 from .fcaide import FC_AIDE
@@ -75,7 +75,11 @@ class Train_FBI(object):
                     param.requires_grad = False
             
             self.args.output_type = "sigmoid"
-        
+        elif self.args.loss_function == 'MSE_Affine_with_tv':
+            self.loss = mse_affine_with_tv
+            num_output_channel = 2
+            self.args.output_type = "linear"
+
         if self.args.model_type == 'FC-AIDE':
             self.model = FC_AIDE(channel = 1, output_channel = num_output_channel, filters = 64, num_of_layers=10, output_type = self.args.output_type, sigmoid_value = self.args.sigmoid_value)
         elif self.args.model_type == 'DBSN':
@@ -96,7 +100,8 @@ class Train_FBI(object):
                                 output_type = self.args.output_type, sigmoid_value = self.args.sigmoid_value)
             
         self.model = self.model.cuda()
-        self.args.logger.watch(self.model)
+        if self.args.log_off is False :
+            self.args.logger.watch(self.model)
         pytorch_total_params = sum([p.numel() for p in self.model.parameters()])
         print ('num of parameters : ', pytorch_total_params)
         
@@ -183,7 +188,10 @@ class Train_FBI(object):
                         loss = self.loss(output, target)
                     else:
                         output = self.model(source)
-                        loss = self.loss(output, target)
+                        if self.args.loss_function == 'MSE_Affine_with_tv':
+                            loss = self.loss(output, target, self.args.lambda_val)
+                        else :
+                            loss = self.loss(output, target)
                 
                 loss = loss.cpu().numpy()
                 
@@ -193,7 +201,7 @@ class Train_FBI(object):
                     X_hat = np.clip(output, 0, 1)
                     X = target.cpu().numpy()
                     
-                elif self.args.loss_function == 'MSE_Affine':
+                elif self.args.loss_function[:10] == 'MSE_Affine':
                     
                     Z = target[:,:1]
                     X = target[:,1:].cpu().numpy()
@@ -226,18 +234,16 @@ class Train_FBI(object):
                 psnr_arr.append(get_PSNR(X[0], X_hat[0]))
                 ssim_arr.append(get_SSIM(X[0], X_hat[0],self.args.data_type))
                 denoised_img_arr.append(X_hat[0].reshape(X_hat.shape[2],X_hat.shape[3]))
-                if batch_idx % 100 == 0 and self.args.log_off is False:
+                if batch_idx % 50 == 0 and self.args.log_off is False:
                     name_str = f""
                     if self.args.data_name == "Samsung":
-                        name_str += f"_{name_sequence[batch_idx // 100]}"
+                        name_str += f"{name_sequence[batch_idx // 50]}"
                     image = wandb.Image(denoised_img_arr[-1], caption = f'EPOCH : {epoch} Batch : {batch_idx}\nPSNR: {psnr_arr[-1]:.4f}, SSIM: {ssim_arr[-1]:.4f}')
                     self.args.logger.log({f"eval/denoised_img_{name_str}" : image})
-                if batch_idx % 100 ==99 and self.args.log_off is False:
-                    if self.args.data_name == "Samsung":
-                        name_str += f"_{name_sequence[batch_idx // 100]}"
-                    self.args.logger.log({f"eval_{name_str}/loss" : np.mean(loss_arr[-100:])})
-                    self.args.logger.log({f"eval_{name_str}/psnr" : np.mean(psnr_arr[-100:])})
-                    self.args.logger.log({f"eval_{name_str}/ssim" : np.mean(ssim_arr[-100:])})
+                if batch_idx % 50 == 49 and self.args.log_off is False:
+                    self.args.logger.log({f"eval_{name_str}/loss" : np.mean(loss_arr[-50:])})
+                    self.args.logger.log({f"eval_{name_str}/psnr" : np.mean(psnr_arr[-50:])})
+                    self.args.logger.log({f"eval_{name_str}/ssim" : np.mean(ssim_arr[-50:])}) 
                     # self.args.logger.log({f"eval/inference_time" : np.mean(time_arr[-100:])})
                 time_arr.append(inference_time)
 
@@ -263,8 +269,8 @@ class Train_FBI(object):
         self.result_time_arr.append(mean_time)
         self.result_te_loss_arr.append(mean_te_loss)
         self.result_tr_loss_arr.append(mean_tr_loss)
-        if self.args.log_off is False:
-            sio.savemat('./result_data/'+self.save_file_name + '_result',{'tr_loss_arr':self.result_tr_loss_arr, 'te_loss_arr':self.result_te_loss_arr,'psnr_arr':self.result_psnr_arr, 'ssim_arr':self.result_ssim_arr,'time_arr':self.result_time_arr, 'denoised_img':self.result_denoised_img_arr})
+        # if self.args.log_off is False:
+        sio.savemat('./result_data/'+self.save_file_name + '_result',{'tr_loss_arr':self.result_tr_loss_arr, 'te_loss_arr':self.result_te_loss_arr,'psnr_arr':self.result_psnr_arr, 'ssim_arr':self.result_ssim_arr,'time_arr':self.result_time_arr, 'denoised_img':self.result_denoised_img_arr})
 
 #         sio.savemat('./result_data/'+self.save_file_name + '_result',{'tr_loss_arr':self.result_tr_loss_arr, 'te_loss_arr':self.result_te_loss_arr,'psnr_arr':self.result_psnr_arr, 'ssim_arr':self.result_ssim_arr})
 
@@ -316,8 +322,11 @@ class Train_FBI(object):
                         output, _ = self.model(source)
                     else:
                         output = self.model(source)
-                        
-                loss = self.loss(output, target)
+                    
+                if self.args.loss_function == 'MSE_Affine_with_tv':
+                    loss = self.loss(output, target, self.args.lambda_val)
+                else :
+                    loss = self.loss(output, target)
                     
                 loss.backward()
                 self.optim.step()

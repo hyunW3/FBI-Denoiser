@@ -10,8 +10,9 @@ def get_args():
                         choices=['Poisson-Gaussian'],
                         help='(default=%(default)s)')
     parser.add_argument('--loss-function', default='Estimated_Affine', type=str, required=False,
-                        choices=['MSE', 'N2V', 'MSE_Affine', 'Noise_est', 'EMSE_Affine'],
+                        choices=['MSE', 'N2V', 'MSE_Affine', 'Noise_est', 'EMSE_Affine', 'MSE_Affine_with_tv'],
                         help='(default=%(default)s)')
+    parser.add_argument('--lambda-val', default=5, type=float, help='(default=%(default)f)')
     parser.add_argument('--vst-version', default='MSE', type=str, required=False,
                         choices=['MSE', 'MAE'])
     parser.add_argument('--model-type', default='final', type=str, required=False,
@@ -28,7 +29,7 @@ def get_args():
                                  'FC-AIDE'],
                         help='(default=%(default)s)')
     parser.add_argument('--BSN-type', default='normal-BSN', type=str, required=False,
-                        choices=['normal-BSN','slightly-BSN','prob-BSN'],
+                        choices=['normal-BSN','no-BSN','slightly-BSN','prob-BSN'],
     )
     parser.add_argument('--BSN-param', default=0.1, type=float,
              help="for slightly BSN, it becomes main-pixel multipler, for randomly BSM, it become probability to mask", required=False)
@@ -95,20 +96,11 @@ def get_args():
     parser.add_argument('--log-off',action='store_true', help='logger (neptune) off')
     parser.add_argument('--speed-test',action='store_true', help='for speed test')
     parser.add_argument('--apply_median_filter',action='store_true', help='apply median_filter instead of FBI-Net')
+    parser.add_argument('--apply_median_filter_target',action='store_true', help='apply median_filter to target image')
     parser.add_argument('--train-with-MSEAffine', action='store_true', help='For samsung SEM image, clean image is denoised image with MSE_AFFINE,not F64 image')
     parser.add_argument('--with-originalPGparam', action='store_true', help='For noise estimation, not using PGE-Net, use original PG param(oracle)')
     args=parser.parse_args()
     
-    # if args.train_set is not None:
-    #     args.train_set = sorted(args.train_set, key=lambda x : int(x))
-    #     args.train_set_str = "".join(args.train_set)
-    #     args.train_set = list(map(lambda x : int(x), args.train_set))
-    #     if args.wholedataset_version == 'v1' :
-    #         possible_set = [1,2,3,4]
-    #     else :
-    #         possible_set = [5,6,7,8,9,10]
-    #     if not set(args.train_set).issubset(possible_set) :
-    #         raise ValueError("train set should be in {}".format(possible_set))
     return args
 
 
