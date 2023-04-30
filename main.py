@@ -1,5 +1,5 @@
 from core.train_fbi import Train_FBI
-# from core.train_pge import Train_PGE
+from core.train_pge import Train_PGE
 from arguments import get_args
 import os,sys
 import torch
@@ -25,16 +25,18 @@ if args.log_off is True:
     args.logger = {}
 else :
     # run_id = f"FBI-Net_semi_BSN_test_BSN_type_{args.BSN_type}_BSN_param_{args.BSN_param}_{args.data_name}_{args.noise_type}_{args.data_type}_alpha_{args.alpha}_beta_{args.beta}_mul_{args.mul}_num_of_layers_{args.num_layers}_output_type_{args.output_type}_sigmoid_value_{args.sigmoid_value}_seed_{args.seed}_date_{args.date}"
-
-    run_id = f"RN2N_{args.wholedataset_version}_{args.x_f_num}-{args.y_f_num}_{args.loss_function}"
+    tag_list = [args.loss_function,args.data_name,f"batch_size_{args.batch_size}"]
+    run_id = f"{args.data_name}_({args.alpha},{args.sigma})_{args.loss_function}"
     if args.apply_median_filter_target is True:
         run_id += "_apply_median_filter_target"
     if args.loss_function == 'MSE_Affine_with_tv':
         run_id += f'TVlambda_{args.lambda_val}'
+        tag_list += f"lambda_{args.lambda_val}"
     # run_id = f"FBI-Net_train_with_originalPGparam_{args.with_originalPGparam}_{args.data_name}_{args.noise_type}_{args.data_type}_alpha_{args.alpha}_beta_{args.beta}_mul_{args.mul}_num_of_layers_{args.num_layers}_output_type_{args.output_type}_sigmoid_value_{args.sigmoid_value}_seed_{args.seed}_date_{args.date}"
-    fnum = f"{args.x_f_num}-{args.y_f_num}"
-    loss_fn = f"{args.loss_function}_h&w"
-    args.logger = init_wandb(project_name = "RN2N_variation", run_id = run_id,tag=['RN2N',fnum,loss_fn,f"lambda_{args.lambda_val}",f"batch_size_{args.batch_size}"])
+    tag_list = []
+    if args.data_name == 'Samsung':
+        tag_list += f"{args.x_f_num}-{args.y_f_num}"
+    args.logger = init_wandb(project_name = "RN2N_variation", run_id = run_id,tag=tag_list)
 if __name__ == '__main__':
     """Trains Noise2Noise."""
     save_file_name =""
@@ -54,46 +56,7 @@ if __name__ == '__main__':
             if args.with_originalPGparam is True:
                 save_file_name += "_with_originalPGparam"
         else : #Samsung SEM image
-            tr_data_dir = f"./data/train_Samsung_SNU_patches_SET{args.set_num}.hdf5"
-            te_data_dir = f'./data/val_Samsung_SNU_patches_SET{args.set_num}.hdf5'
-            save_file_name = f"{args.date}_{args.model_type}_{args.data_type}_{args.data_name}"
-            if args.integrate_all_set is False:
-                save_file_name += f"_SET{args.set_num}"
-            if args.test :
-                tr_data_dir = f"./data/val_Samsung_SNU_patches_SET{args.set_num}.hdf5"
-            
-            if args.train_with_MSEAffine :
-                tr_data_dir = f"./result_data/denoised_with_MSE_Affine_train_Samsung_SNU_patches_SET{args.set_num}.hdf5"
-                if args.test :
-                    tr_data_dir = f"./result_data/denoised_with_MSE_Affine_val_Samsung_SNU_patches_SET{args.set_num}.hdf5"
-                te_data_dir = f'./result_data/denoised_with_MSE_Affine_val_Samsung_SNU_patches_SET{args.set_num}.hdf5'
-                save_file_name += '_clean_as_MSE_Affine'
-            
-            if args.use_other_target is True:
-                tr_data_dir = f'./data/train_Samsung_SNU_patches_SET{args.set_num}_divided_by_fnum.hdf5'
-                te_data_dir = f'./data/val_Samsung_SNU_patches_SET{args.set_num}_divided_by_fnum.hdf5'
-                #tr_data_dir = f'./data/train_Samsung_SNU_patches_SET{args.set_num}_overlap_dataset.hdf5'
-                #te_data_dir = f'./data/val_Samsung_SNU_patches_SET{args.set_num}_overlap_dataset.hdf5'
-                
-                if args.integrate_all_set is True:
-                    print("integrate all set is not available for use_other_target")
-        
-                if args.model_type != 'PGE_Net':
-                    save_file_name += f'_x_as_{args.x_f_num}_y_as_{args.y_f_num}'
-                else:
-                    save_file_name += f'_{args.x_f_num}'        
-            elif args.integrate_all_set is True:
-                tr_data_dir = f'./data/train_Samsung_SNU_patches_SET050607080910_divided_by_fnum_setnum.hdf5'
-                te_data_dir = f'./data/test_Samsung_SNU_patches_SET050607080910_divided_by_fnum_setnum.hdf5'
-                save_file_name += f"_SET050607080910"
-                if args.wholedataset_version == 'v1':
-                    save_file_name += f"_with_SET01020304"
-                if args.individual_noisy_input is True :
-                    save_file_name += f"individual_x_as_{args.x_f_num}_y_as_{args.y_f_num}"
-                else :
-                    save_file_name += f"_mixed_x_as_{args.x_f_num}_y_as_{args.y_f_num}"
-                # tr_data_dir = f'./data/train_Samsung_SNU_patches_whole_set10to1_divided_by_fnum_setnum.hdf5'
-                # te_data_dir = f'./data/test_Samsung_SNU_patches_whole_set10to1_divided_by_fnum_setnum.hdf5'
+            raise ValueError("Invalid data_name ",args.data_name)
         if args.apply_median_filter_target:
             save_file_name += "_median_filter_target"
         if args.loss_function == 'MSE_Affine_with_tv':

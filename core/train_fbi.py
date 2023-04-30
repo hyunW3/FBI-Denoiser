@@ -25,12 +25,16 @@ class Train_FBI(object):
         
         if self.args.pge_weight_dir != None:
             self.pge_weight_dir = './weights/' + self.args.pge_weight_dir
-        
-        self.tr_data_loader = TrdataLoader(_tr_data_dir, self.args)
-        self.tr_data_loader = DataLoader(self.tr_data_loader, batch_size=self.args.batch_size, shuffle=True, num_workers=0, drop_last=True)
-        
-        self.te_data_loader = TedataLoader(_te_data_dir, self.args)
-        self.te_data_loader = DataLoader(self.te_data_loader, batch_size=1, shuffle=False, num_workers=0, drop_last=False)
+        if "230414" in _tr_data_dir :
+            self.tr_data_loader = None
+            self.te_data_loader = None
+            raise ValueError("230414 is not supported")
+        else :
+            self.tr_data_loader = TrdataLoader(_tr_data_dir, self.args)
+            self.tr_data_loader = DataLoader(self.tr_data_loader, batch_size=self.args.batch_size, shuffle=True, num_workers=0, drop_last=True)
+            
+            self.te_data_loader = TedataLoader(_te_data_dir, self.args)
+            self.te_data_loader = DataLoader(self.te_data_loader, batch_size=1, shuffle=False, num_workers=0, drop_last=False)
 
         self.result_psnr_arr = []
         self.result_ssim_arr = []

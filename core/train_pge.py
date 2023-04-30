@@ -105,7 +105,7 @@ class Train_PGE(object):
         #     'alpha' : a_arr,
         #     'sigma' : b_arr
         # })
-        self.args.neptune_logger[
+        self.args.neptune_logger['mean_tr_loss']= mean_tr_loss
         self.args.neptune_logger['mean_te_loss']= mean_tr_loss
         self.args.neptune_logger['alpha'] = a_arr
         self.args.neptune_logger['sigma'] = b_arr
