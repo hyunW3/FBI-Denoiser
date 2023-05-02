@@ -94,7 +94,17 @@ def get_fbi_weight(f_num_list = ['F#','F01','F02','F04','F08','F16','F32','F64']
         for fbi_weight in fbi_weight_list:
             print(fbi_weight)
     return total_fbi_weight_list
-target_fbi_weight = get_fbi_weight() 
+# target_fbi_weight = get_fbi_weight() 
+# target_fbi_weight = [
+#     "../weights/230414_find_lambda_FBI_Net_Grayscale_Samsung_SET050607080910individual_x_as_F08_y_as_F32_l1_on_img_gradient_0.1_MSE_Affine_with_tv_layers_x17_filters_x64_cropsize_256.w",
+#     "../weights/230414_find_lambda_FBI_Net_Grayscale_Samsung_SET050607080910individual_x_as_F08_y_as_F32_l1_on_img_gradient_0.3_MSE_Affine_with_tv_layers_x17_filters_x64_cropsize_256.w",
+#     "../weights/230414_find_lambda_FBI_Net_Grayscale_Samsung_SET050607080910individual_x_as_F08_y_as_F32_l1_on_img_gradient_0.8_MSE_Affine_with_tv_layers_x17_filters_x64_cropsize_256.w",
+#     "../weights/230414_find_lambda_FBI_Net_Grayscale_Samsung_SET050607080910x_as_F01_y_as_F02_l1_on_img_gradient_0.1_MSE_Affine_with_tv_layers_x17_filters_x64_cropsize_256.w",
+#     "../weights/230414_find_lambda_FBI_Net_Grayscale_Samsung_SET050607080910x_as_F01_y_as_F02_l1_on_img_gradient_0.3_MSE_Affine_with_tv_layers_x17_filters_x64_cropsize_256.w",
+#     "../weights/230414_find_lambda_FBI_Net_Grayscale_Samsung_SET050607080910x_as_F01_y_as_F02_l1_on_img_gradient_0.8_MSE_Affine_with_tv_layers_x17_filters_x64_cropsize_256.w",   
+# ]
+target_fbi_weight = glob("../weights/*x_as_F08_y_as_F32_l1_on_img_gradient_*") + glob("../weights/*x_as_F01_y_as_F02_l1_on_img_gradient_*") 
+print(target_fbi_weight)
 
 
 import math
@@ -116,13 +126,15 @@ def get_SSIM(X, X_hat):
 def parsing_weight_name(fbi_weight_dir):
     target_y = fbi_weight_dir.split("_y_as_")[1][:3]
     if "x_as_" in fbi_weight_dir:
-        target_x = fbi_weight_dir.split("_x_as_")[1][:3]
+        target_x = fbi_weight_dir.split("x_as_")[1][:3]
         if 'F#' in target_x:
             target_x = "F#"
     else :
         target_x = "F#"
     dataset_version = 'v1' if 'with_SET01020304' in fbi_weight_dir else 'v2'
-    
+    if "l1_on_img_gradient" in fbi_weight_dir:
+        lambda_val = fbi_weight_dir.split("l1_on_img_gradient_")[1].split("_")[0]
+        dataset_version += f"_l1_on_img_gradient_{lambda_val}"
     return target_x,target_y, dataset_version
 
 
@@ -135,6 +147,7 @@ for fbi_weight_dir in target_fbi_weight:
         print(fbi_weight_dir)
         # print(median_filter_input,"median_filter_input")
     key = f"{target_x}-{target_y}_{dataset_version}"
+    os.makedirs(key,exist_ok=True)
     print(f"========= {key} =========")
     model = produce_denoised_img_no_crop(_pge_weight_dir=None,_fbi_weight_dir = fbi_weight_dir,_args = args)
     
@@ -171,10 +184,13 @@ for fbi_weight_dir in target_fbi_weight:
             metric[key]['before_PSNR'].append(before_psnr)
             metric[key]['before_SSIM'].append(before_ssim)
             
+            # print("imwrite : ",f"{folder_name}/{filename}")
+            # cv2.imwrite(f"{folder_name}/{filename}",denoised_img*255)
+            
         print(f"Denoising SET : {set_num}, f_num : {f_num} End")
             
         gc.collect()
     # np.save(f"./intermediate_result/{folder_name}_denoised_img_dict.npy",denoised_img_dict)
-print("saving metric")
-np.save("./PSNR_and_SSIM_metric.npy",metric)
-print("saved metric done")
+# print("saving metric")
+# np.save("./PSNR_and_SSIM_metric.npy",metric)
+# print("saved metric done")
