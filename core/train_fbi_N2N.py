@@ -7,7 +7,7 @@ import wandb
 import numpy as np
 import scipy.io as sio
 from datetime import date
-from .dataloader_230414 import N2N_F01_Dataset
+from .dataloader_230414 import RN2N_Dataset
 from .utils import get_PSNR, get_SSIM, inverse_gat, gat, normalize_after_gat_torch
 from .loss_functions import mse_bias, mse_affine, emse_affine, mse_affine_with_tv
 from .logger import Logger
@@ -24,15 +24,23 @@ class TrainN2N_FBI(object):
     def __init__(self,_tr_data_dir=None, _te_data_dir=None, _save_file_name = None, _args = None):
         
         self.args = _args
-        
+        self.x_avg_num = int(self.args.x_f_num[1:])
+        self.y_avg_num = int(self.args.y_f_num[1:])
+        print("x_avg_num, y_avg_num",self.x_avg_num, self.y_avg_num)
         if self.args.pge_weight_dir != None:
             self.pge_weight_dir = './weights/' + self.args.pge_weight_dir
         
-        self.tr_data_loader = N2N_F01_Dataset(data_path = _tr_data_dir, return_img_info = False)
-        self.tr_data_loader = DataLoader(self.tr_data_loader, batch_size=self.args.batch_size, shuffle=True, num_workers=0, drop_last=True)
-        self.te_data_loader =  N2N_F01_Dataset(data_path = _te_data_dir, return_img_info = True)
-        self.te_data_loader = DataLoader(self.te_data_loader, batch_size=1, shuffle=False, num_workers=0, drop_last=False)
-            
+        self.tr_data_loader = RN2N_Dataset(data_path = _tr_data_dir, 
+                                           x_avg_num = self.x_avg_num, y_avg_num = self.y_avg_num,
+                                           return_img_info = False)
+        self.tr_data_loader = DataLoader(self.tr_data_loader, batch_size=self.args.batch_size, shuffle=True, num_workers=16, drop_last=True)
+        self.te_data_loader =  RN2N_Dataset(data_path = _te_data_dir, 
+                                            x_avg_num = self.x_avg_num, y_avg_num = self.y_avg_num,
+                                            return_img_info = True)
+        self.te_data_loader = DataLoader(self.te_data_loader, batch_size=1, shuffle=False, num_workers=16, drop_last=False)
+        print(len(self.tr_data_loader), len(self.te_data_loader))
+        if self.args.test is True:
+            sys.exit(0)
 
         self.result_psnr_arr = []
         self.result_ssim_arr = []

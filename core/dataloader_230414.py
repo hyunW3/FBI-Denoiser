@@ -52,35 +52,43 @@ def average_img(imgs : np.array):
     """    
     return np.mean(imgs, axis = 0)
     
-    
-def loader_for_N2N(data_path = "/mnt/ssd/hyun/fbi-net/FBI-Denoiser/data/train_Samsung_SNU_patches_230414.hdf5",
-                 avg_num = 1, return_img_info = False):
+
+def loader_for_RN2N(data_path = "/mnt/ssd/hyun/fbi-net/FBI-Denoiser/data/train_Samsung_SNU_patches_230414.hdf5",
+                 x_avg_num = 1,y_avg_num = 1, return_img_info = False):
     """
         transform (16, 256, 256) to 15 pairs of two F01 images
-        TODO : average num applied
+        
     """
-    num_crop_to_train = {1 : 35, 2 : 140, 4 : 260, 8 : 520}
+    if x_avg_num + y_avg_num >16:
+        raise ValueError("x_avg_num + y_avg_num should be less than 16")
+    # {2 : 33, 4 : 140, 8 : 260, 16 : 520}
+    num_crop_to_train = {2 : 66, 3 : 105, 4 : 132, 6 : 263, 8 : 263, 16 : 526}
     data = h5py.File(data_path,'r')
     if return_img_info is True :
         img_info = {}
-    for i in range(1,42+1):
+    key = x_avg_num + y_avg_num
+    # key = 2**np.ceil(np.log2(x_avg_num+y_avg_num)) # 2,4,8,16으로 올림해야한다.
+    # print("sum of fnumber :",key,num_crop_to_train[key])
+    num_images = 42
+    for i in range(1,num_images+1):
         keys = list(filter(lambda x : f"F01_{i:02d}" in x, data.keys()))
         if keys == []:
             continue
 
         target_key = f"F32_{i:02d}"
         data_list = np.array([data[key] for key in keys])
-        target_data = np.array(data[target_key])
-        # for idx in range(num_crop_to_train[avg_num]): # 40 in (16,40,256,256)
-        for idx in range(25): # 40 in (16,40,256,256)
+        target_data = np.array(data[target_key]) 
+        
+        for idx in range(num_crop_to_train[key]): # 40 in (16,40,256,256)
+        # for idx in range(25): # 40 in (16,40,256,256)
             # print(target_data[idx].shape, type(target_data[idx]))
             target_data_sample = np.expand_dims(target_data[idx],axis=0)
-            
-            for pair_idx in range(0,data_list.shape[0],avg_num): # 16 in (16,40,256,256)
-                if pair_idx + 2*avg_num > data_list.shape[0]:
+            step = x_avg_num + y_avg_num
+            for pair_idx in range(0,data_list.shape[0],step): # 16 in (16,40,256,256)
+                if pair_idx + step > data_list.shape[0]:
                     break
-                noisy1 = data_list[pair_idx:pair_idx+avg_num,idx]
-                noisy2 = data_list[pair_idx+avg_num:pair_idx+2*avg_num,idx]
+                noisy1 = data_list[pair_idx:pair_idx+x_avg_num,idx]
+                noisy2 = data_list[pair_idx+x_avg_num:pair_idx+x_avg_num + y_avg_num,idx]
                 # print(f"{pair_idx} ~ {pair_idx+avg_num}, {pair_idx+avg_num} ~ {pair_idx+2*avg_num}")
                 # print(noisy1.shape,noisy2.shape)
                 noisy1 = average_img(noisy1)
@@ -93,19 +101,21 @@ def loader_for_N2N(data_path = "/mnt/ssd/hyun/fbi-net/FBI-Denoiser/data/train_Sa
                 # print(noisy1.shape, "\n",min(noisy1),max(noisy1))
                 if return_img_info is True:
                     img_info = {'img_name' : keys[0][:-3], 'img_idx' : idx, 
-                                'pair_idx' : pair_idx, 'avg_num' : avg_num}
+                                'pair_idx' : pair_idx, 'avg_num' : (x_avg_num,y_avg_num)}
                     yield img_info, noisy1,noisy2, target_data_sample
                 else :
                     yield noisy1,noisy2,target_data_sample
 
-class N2N_Dataset(Dataset):
+class RN2N_Dataset(Dataset):
     def __init__(self,data_path="/mnt/ssd/hyun/fbi-net/FBI-Denoiser/data/train_Samsung_SNU_patches_230414.hdf5",
-                 avg_num=1,transform=True, return_img_info = False):
-        self.dataset = list(loader_for_N2N(data_path=data_path,avg_num=avg_num,
+                 x_avg_num=1,y_avg_num = 1, transform=True, return_img_info = False):
+        self.dataset = list(loader_for_RN2N(data_path=data_path,
+                                            x_avg_num=x_avg_num,y_avg_num = y_avg_num, 
                                         return_img_info=return_img_info)
                             )
         self.transform = transform
-        self.avg_num = avg_num
+        self.x_avg_num = x_avg_num
+        self.y_avg_num = y_avg_num
         self.return_img_info = return_img_info
     def __len__(self):
         return len(self.dataset)
@@ -135,7 +145,7 @@ if __name__ == '__main__':
     #     print(noisy.shape, clean.shape)
     print("=====================================")
     print("N2N")
-    gen = N2N_Dataset(avg_num=4, return_img_info=True)
+    gen = RN2N_Dataset(x_avg_num=4,y_avg_num=4, return_img_info=True)
     gen = torch.utils.data.DataLoader(gen, batch_size=2, shuffle=True, num_workers=20)
     print("dataloader load end")
     # print(len(gen)) # avg_num : 4 -> 1538

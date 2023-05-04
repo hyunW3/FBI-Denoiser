@@ -26,21 +26,18 @@ if args.log_off is True:
     args.logger = {}
 else :
     # run_id = f"FBI-Net_semi_BSN_test_BSN_type_{args.BSN_type}_BSN_param_{args.BSN_param}_{args.data_name}_{args.noise_type}_{args.data_type}_alpha_{args.alpha}_beta_{args.beta}_mul_{args.mul}_num_of_layers_{args.num_layers}_output_type_{args.output_type}_sigmoid_value_{args.sigmoid_value}_seed_{args.seed}_date_{args.date}"
-    args.x_f_num = 'F01'
-    args.y_f_num = 'F01'
     model_type = 'RN2N' if args.x_f_num != args.y_f_num else 'N2N'
     tag_list = ['N2N',args.loss_function,args.data_name,f"batch_size_{args.batch_size}"]
     run_id = f"{model_type}_({args.x_f_num}-{args.y_f_num})_{args.loss_function}"
-    if args.apply_median_filter_target is True:
-        run_id += "_apply_median_filter_target"
+
     if args.loss_function == 'MSE_Affine_with_tv':
-        run_id += f'TVlambda_{args.lambda_val}'
-        tag_list += f"TVlambda_{args.lambda_val}"
+        run_id += f'TV_{args.lambda_val}'
+        tag_list += f"TV_{args.lambda_val}"
     # run_id = f"FBI-Net_train_with_originalPGparam_{args.with_originalPGparam}_{args.data_name}_{args.noise_type}_{args.data_type}_alpha_{args.alpha}_beta_{args.beta}_mul_{args.mul}_num_of_layers_{args.num_layers}_output_type_{args.output_type}_sigmoid_value_{args.sigmoid_value}_seed_{args.seed}_date_{args.date}"
     tag_list = []
     if args.data_name == 'Samsung':
         tag_list += f"{args.x_f_num}-{args.y_f_num}"
-    args.logger = init_wandb(project_name = "RN2N_variation", run_id = run_id,tag=tag_list)
+    args.logger = init_wandb(project_name = "N2N_RN2N", run_id = run_id,tag=tag_list)
 if __name__ == '__main__':
     """Trains Noise2Noise."""
     save_file_name =""
