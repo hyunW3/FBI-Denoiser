@@ -72,8 +72,10 @@ def get_args():
     parser.add_argument('--set-num', default=1, type=int, help='For samsung SEM image, need f-number 8,16,32,64',
                         choices=[1,2,3,4])
     parser.add_argument('--test', action='store_true', help='For samsung SEM image, train dataset to be test dataset(small size)')
+    parser.add_argument('--log-off', action='store_true', help='log off')
+    parser.add_argument('--save-whole-model', action='store_true', help='save whole model')
     parser.add_argument('--train-with-MSEAffine', action='store_true', help='For samsung SEM image, clean image is denoised image with MSE_AFFINE,not F64 image')
-    args=parser.parse_args(args=[])
+    args=parser.parse_args() # args=parser.parse_args(args=[])
     return args
 
 

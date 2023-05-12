@@ -14,7 +14,7 @@ data/tmp
 denoising-fluorescence/
 denoise_and_get_CD/segmenetation_img
 denoise_and_get_CD/result_data
-
+check_bottom&top_crop_image.ipynb
 .ipynb_checkpoints
 
 *.gif
