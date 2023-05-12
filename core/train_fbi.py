@@ -112,9 +112,11 @@ class Train_FBI(object):
         self.optim = torch.optim.Adam(self.model.parameters(), lr=self.args.lr)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optim, self.args.drop_epoch, gamma=self.args.drop_rate)
         
-    def save_model(self):
-        
-        torch.save(self.model.state_dict(), './weights/'+self.save_file_name + '.w')
+    def save_model(self,num_epoch = None):
+        if num_epoch is not None:
+            torch.save(self.model.state_dict(), './weights/'+self.save_file_name + '_'+str(num_epoch)+'.w')
+        else :
+            torch.save(self.model.state_dict(), './weights/'+self.save_file_name + '.w')
         
         return
     
@@ -342,8 +344,10 @@ class Train_FBI(object):
                     break
             mean_tr_loss = np.mean(tr_loss)
             
-            self._on_epoch_end(epoch+1, mean_tr_loss)    
-            if self.args.nepochs == epoch +1:
+            self._on_epoch_end(epoch+1, mean_tr_loss)   
+            if self.args.save_whole_model is True:
+                self.save_model(epoch+1)
+            elif self.args.nepochs == epoch +1:
                 self.save_model()
                 
             self.scheduler.step()

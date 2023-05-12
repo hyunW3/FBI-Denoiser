@@ -94,6 +94,7 @@ def get_args():
                         choices=[1,2,3,4,5,6,7,8,9,10])
     parser.add_argument('--test', action='store_true', help='For samsung SEM image, train dataset to be test dataset(small size)')
     parser.add_argument('--log-off',action='store_true', help='logger (neptune) off')
+    parser.add_argument('--save-whole-model',action='store_true', help='save whole model')
     parser.add_argument('--speed-test',action='store_true', help='for speed test')
     parser.add_argument('--apply_median_filter',action='store_true', help='apply median_filter instead of FBI-Net')
     parser.add_argument('--apply_median_filter_target',action='store_true', help='apply median_filter to target image')

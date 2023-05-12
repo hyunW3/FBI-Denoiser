@@ -20,23 +20,22 @@ torch.backends.cudnn.deterministic = True
 
 if torch.cuda.is_available():
     torch.cuda.manual_seed(args.seed)
-
     
 if args.log_off is True:
     args.logger = {}
 else :
     # run_id = f"FBI-Net_semi_BSN_test_BSN_type_{args.BSN_type}_BSN_param_{args.BSN_param}_{args.data_name}_{args.noise_type}_{args.data_type}_alpha_{args.alpha}_beta_{args.beta}_mul_{args.mul}_num_of_layers_{args.num_layers}_output_type_{args.output_type}_sigmoid_value_{args.sigmoid_value}_seed_{args.seed}_date_{args.date}"
     model_type = 'RN2N' if args.x_f_num != args.y_f_num else 'N2N'
-    tag_list = ['N2N',args.loss_function,args.data_name,f"batch_size_{args.batch_size}"]
+    tag_list = [model_type,args.loss_function,args.data_name,f"batch_size_{args.batch_size}"]
     run_id = f"{model_type}_({args.x_f_num}-{args.y_f_num})_{args.loss_function}"
 
     if args.loss_function == 'MSE_Affine_with_tv':
         run_id += f'TV_{args.lambda_val}'
-        tag_list += f"TV_{args.lambda_val}"
+        tag_list.append(f"TV_{args.lambda_val}")
     # run_id = f"FBI-Net_train_with_originalPGparam_{args.with_originalPGparam}_{args.data_name}_{args.noise_type}_{args.data_type}_alpha_{args.alpha}_beta_{args.beta}_mul_{args.mul}_num_of_layers_{args.num_layers}_output_type_{args.output_type}_sigmoid_value_{args.sigmoid_value}_seed_{args.seed}_date_{args.date}"
     tag_list = []
     if args.data_name == 'Samsung':
-        tag_list += f"{args.x_f_num}-{args.y_f_num}"
+        tag_list.append(f"{args.x_f_num}-{args.y_f_num}")
     args.logger = init_wandb(project_name = "N2N_RN2N", run_id = run_id,tag=tag_list)
 if __name__ == '__main__':
     """Trains Noise2Noise."""
@@ -45,7 +44,7 @@ if __name__ == '__main__':
     # load dataloader
     tr_data_dir = f"./data/train_Samsung_SNU_patches_230414.hdf5"
     te_data_dir = f'./data/test_Samsung_SNU_patches_230414.hdf5'
-    save_file_name = f"{args.date}_{args.model_type}_{args.data_type}_N2N_{args.data_name}"
+    save_file_name = f"{args.date}_{args.model_type}_{args.data_type}_N2N_{args.x_f_num}-{args.y_f_num}_{args.data_name}"
     
     
     if args.loss_function == 'MSE_Affine_with_tv':

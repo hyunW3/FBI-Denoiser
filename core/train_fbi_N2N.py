@@ -6,7 +6,7 @@ from torch.utils.tensorboard import SummaryWriter
 import wandb
 import numpy as np
 import scipy.io as sio
-from datetime import date
+from datetime import date 
 from .dataloader_230414 import RN2N_Dataset
 from .utils import get_PSNR, get_SSIM, inverse_gat, gat, normalize_after_gat_torch
 from .loss_functions import mse_bias, mse_affine, emse_affine, mse_affine_with_tv
@@ -232,50 +232,49 @@ class TrainN2N_FBI(object):
                 #    print (X_hat.shape)
                 #    print (X.shape)
 
-                inference_time = time.time()-start
+                # inference_time = time.time()-start
                 
                 loss_arr.append(loss)
                 psnr_arr.append(get_PSNR(X[0], X_hat[0]))
                 ssim_arr.append(get_SSIM(X[0], X_hat[0],self.args.data_type))
                 denoised_img_arr.append(X_hat[0].reshape(X_hat.shape[2],X_hat.shape[3]))
-                if batch_idx % 525 == 0 and self.args.log_off is False:
+                if batch_idx % 50 == 49 and self.args.log_off is False:
                     name_str = f""
                     if self.args.data_name == "Samsung":
-                        name_str += f"{img_info['img_name']}_{img_info['img_idx'].item()}th_{img_info['pair_idx'].item()}th_pair"
+                        name_str += f"{img_info['img_name'][0]}_{img_info['img_idx'].item()}th_{img_info['pair_idx'].item()}th_pair"
                     image = wandb.Image(denoised_img_arr[-1], caption = f'EPOCH : {epoch} Batch : {batch_idx}\nPSNR: {psnr_arr[-1]:.4f}, SSIM: {ssim_arr[-1]:.4f}')
                                 
                     self.args.logger.log({f"eval/denoised_img_{name_str}" : image})
-                if batch_idx % 50 == 49 and self.args.log_off is False:
                     self.args.logger.log({f"eval_{name_str}/loss" : np.mean(loss_arr[-50:])})
                     self.args.logger.log({f"eval_{name_str}/psnr" : np.mean(psnr_arr[-50:])})
                     self.args.logger.log({f"eval_{name_str}/ssim" : np.mean(ssim_arr[-50:])}) 
                     # self.args.logger.log({f"eval/inference_time" : np.mean(time_arr[-100:])})
-                time_arr.append(inference_time)
+                # time_arr.append(inference_time)
 
         mean_loss = np.mean(loss_arr)
         mean_psnr = np.mean(psnr_arr)
         mean_ssim = np.mean(ssim_arr)
-        mean_time = np.mean(time_arr)
+        # mean_time = np.mean(time_arr)
 
         if self.best_psnr <= mean_psnr:
             self.best_psnr = mean_psnr
             self.result_denoised_img_arr = denoised_img_arr.copy()
         
             
-        return mean_loss, mean_psnr, mean_ssim, mean_time
+        return mean_loss, mean_psnr, mean_ssim
     
     def _on_epoch_end(self, epoch, mean_tr_loss):
         """Tracks and saves starts after each epoch."""
         
-        mean_te_loss, mean_psnr, mean_ssim, mean_time = self.eval(epoch)
+        mean_te_loss, mean_psnr, mean_ssim = self.eval(epoch)
 
         self.result_psnr_arr.append(mean_psnr)
         self.result_ssim_arr.append(mean_ssim)
-        self.result_time_arr.append(mean_time)
+        # self.result_time_arr.append(mean_time)
         self.result_te_loss_arr.append(mean_te_loss)
         self.result_tr_loss_arr.append(mean_tr_loss)
         # if self.args.log_off is False:
-        sio.savemat('./result_data/'+self.save_file_name + '_result',{'tr_loss_arr':self.result_tr_loss_arr, 'te_loss_arr':self.result_te_loss_arr,'psnr_arr':self.result_psnr_arr, 'ssim_arr':self.result_ssim_arr,'time_arr':self.result_time_arr, 'denoised_img':self.result_denoised_img_arr})
+        sio.savemat('./result_data/'+self.save_file_name + '_result',{'tr_loss_arr':self.result_tr_loss_arr, 'te_loss_arr':self.result_te_loss_arr,'psnr_arr':self.result_psnr_arr, 'ssim_arr':self.result_ssim_arr, 'denoised_img':self.result_denoised_img_arr}) # 'time_arr':self.result_time_arr,
 
 #         sio.savemat('./result_data/'+self.save_file_name + '_result',{'tr_loss_arr':self.result_tr_loss_arr, 'te_loss_arr':self.result_te_loss_arr,'psnr_arr':self.result_psnr_arr, 'ssim_arr':self.result_ssim_arr})
 
