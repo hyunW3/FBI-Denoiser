@@ -6,6 +6,7 @@ import os,sys
 import torch
 import numpy as np
 import random
+from data.core import data_loader
 from neptune_setting import init_neptune
 from wandb_setting import init_wandb
 print("torch version : ",torch.__version__)
@@ -33,17 +34,24 @@ else :
         run_id += f'TV_{args.lambda_val}'
         tag_list.append(f"TV_{args.lambda_val}")
     # run_id = f"FBI-Net_train_with_originalPGparam_{args.with_originalPGparam}_{args.data_name}_{args.noise_type}_{args.data_type}_alpha_{args.alpha}_beta_{args.beta}_mul_{args.mul}_num_of_layers_{args.num_layers}_output_type_{args.output_type}_sigmoid_value_{args.sigmoid_value}_seed_{args.seed}_date_{args.date}"
-    tag_list = []
     if args.data_name == 'Samsung':
-        tag_list.append(f"{args.x_f_num}-{args.y_f_num}")
-    args.logger = init_wandb(project_name = "N2N_RN2N", run_id = run_id,tag=tag_list)
+        project_name = 'N2N_RN2N'
+    else :
+        project_name = f'N2N_RN2N_{args.data_type}_{args.data_name}'
+    tag_list.append(f"{args.x_f_num}-{args.y_f_num}")
+
+    args.logger = init_wandb(project_name = project_name, run_id = run_id,tag=tag_list)
 if __name__ == '__main__':
     """Trains Noise2Noise."""
     save_file_name =""
         
     # load dataloader
-    tr_data_dir = f"./data/train_Samsung_SNU_patches_230414.hdf5"
-    te_data_dir = f'./data/test_Samsung_SNU_patches_230414.hdf5'
+    if args.data_name == 'Samsung':
+        tr_data_dir = f"./data/train_Samsung_SNU_patches_230414.hdf5"
+        te_data_dir = f'./data/test_Samsung_SNU_patches_230414.hdf5'
+    elif args.data_type == 'FMD' and args.data_name in ['CF_FISH', 'CF_MICE','TP_MICE']:
+        tr_data_dir = f"/mnt/ssd/hyun/datasets/FMD_dataset"
+        te_data_dir = f'/mnt/ssd/hyun/datasets/FMD_dataset'
     save_file_name = f"{args.date}_{args.model_type}_{args.data_type}_N2N_{args.x_f_num}-{args.y_f_num}_{args.data_name}"
     
     
@@ -71,10 +79,7 @@ if __name__ == '__main__':
 
     
     if args.model_type != 'PGE_Net':
-        if "230414" in tr_data_dir:
-            train = TrainN2N_FBI(_tr_data_dir=tr_data_dir, _te_data_dir=te_data_dir, _save_file_name = save_file_name,  _args = args)
-        else :
-            train = Train_FBI(_tr_data_dir=tr_data_dir, _te_data_dir=te_data_dir, _save_file_name = save_file_name,  _args = args)
+        train = TrainN2N_FBI(_tr_data_dir=tr_data_dir, _te_data_dir=te_data_dir, _save_file_name = save_file_name,  _args = args)
     else:
         train = Train_PGE(_tr_data_dir=tr_data_dir, _te_data_dir=te_data_dir, _save_file_name = save_file_name,  _args = args)
     train.train()

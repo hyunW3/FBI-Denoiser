@@ -34,12 +34,12 @@ def get_args():
     parser.add_argument('--BSN-param', default=0.1, type=float,
              help="for slightly BSN, it becomes main-pixel multipler, for randomly BSM, it become probability to mask", required=False)
     parser.add_argument('--prob-BSN-test-mode', action='store_true', help='for prob-BSN, test mode on')
-    parser.add_argument('--data-type', default='RawRGB', type=str, required=False,
+    parser.add_argument('--data-type', default=None, type=str, required=False,
                         choices=['Grayscale',
                                  'RawRGB',
                                  'FMD',],
                         help='(default=%(default)s)')
-    parser.add_argument('--data-name', default='BSD', type=str, required=False,
+    parser.add_argument('--data-name', default=None, type=str, required=False,
                         choices=['BSD',
                                  'fivek',
                                  'SIDD',

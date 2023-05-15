@@ -1,12 +1,16 @@
 import os,cv2
+from random import sample
 import sys
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+import torchvision
 import wandb
 import numpy as np
 import scipy.io as sio
-from datetime import date 
+from datetime import date
+
+from .data_loader_FMD import load_denoising_rn2n 
 from .dataloader_230414 import RN2N_Dataset
 from .utils import get_PSNR, get_SSIM, inverse_gat, gat, normalize_after_gat_torch
 from .loss_functions import mse_bias, mse_affine, emse_affine, mse_affine_with_tv
@@ -29,18 +33,27 @@ class TrainN2N_FBI(object):
         print("x_avg_num, y_avg_num",self.x_avg_num, self.y_avg_num)
         if self.args.pge_weight_dir != None:
             self.pge_weight_dir = './weights/' + self.args.pge_weight_dir
-        
-        self.tr_data_loader = RN2N_Dataset(data_path = _tr_data_dir, 
-                                           x_avg_num = self.x_avg_num, y_avg_num = self.y_avg_num,
-                                           return_img_info = False)
-        self.tr_data_loader = DataLoader(self.tr_data_loader, batch_size=self.args.batch_size, shuffle=True, num_workers=16, drop_last=True)
-        self.te_data_loader =  RN2N_Dataset(data_path = _te_data_dir, 
+        if self.args.data_name == 'Samsung':
+            self.tr_data_loader = RN2N_Dataset(data_path = _tr_data_dir, 
                                             x_avg_num = self.x_avg_num, y_avg_num = self.y_avg_num,
-                                            return_img_info = True)
-        self.te_data_loader = DataLoader(self.te_data_loader, batch_size=1, shuffle=False, num_workers=16, drop_last=False)
+                                            return_img_info = False)
+            self.tr_data_loader = DataLoader(self.tr_data_loader, batch_size=self.args.batch_size, shuffle=True, num_workers=16, drop_last=True)
+            self.te_data_loader =  RN2N_Dataset(data_path = _te_data_dir, 
+                                                x_avg_num = self.x_avg_num, y_avg_num = self.y_avg_num,
+                                                return_img_info = True)
+            self.te_data_loader = DataLoader(self.te_data_loader, batch_size=1, shuffle=False, num_workers=16, drop_last=False)
+        elif self.args.data_type == 'FMD' :
+            self.tr_data_loader = load_denoising_rn2n(data_root=_tr_data_dir, train=True, img_type=self.args.data_name, 
+                                                      x_noise_level = self.x_avg_num, y_noise_level = self.y_avg_num,
+                                                      batch_size=self.args.batch_size)
+            self.te_data_loader = load_denoising_rn2n(data_root=_te_data_dir, train=False, img_type=self.args.data_name, 
+                                                      x_noise_level = self.x_avg_num, y_noise_level = self.y_avg_num,
+                                                      batch_size=1)
+        else :
+            raise NotImplementedError("Not implemented data type", self.args.data_type, self.args.data_name)
         print(len(self.tr_data_loader), len(self.te_data_loader))
-        if self.args.test is True:
-            sys.exit(0)
+        # if self.args.test is True:
+        #     sys.exit(0)
 
         self.result_psnr_arr = []
         self.result_ssim_arr = []
@@ -143,19 +156,24 @@ class TrainN2N_FBI(object):
 
     def eval(self,epoch):
         """Evaluates denoiser on validation set."""
-                
+        print(f"\n===={epoch}th epoch start evaluation ====")
         psnr_arr = []
         ssim_arr = []
         loss_arr = []
         time_arr = []
         denoised_img_arr = []
+        clean_img_arr = []
+        noisy_img_arr = []
         # # next prob-BSN
         if self.args.BSN_type == 'prob-BSN' and self.args.prob_BSN_test_mode is True:
             self.model.eval()
+        sample_pic_len = min(50,len(self.te_data_loader)//5)
         with torch.no_grad():
-
-            for batch_idx, (img_info, noisy1,noisy2, clean) in enumerate(self.te_data_loader):
-
+            for batch_idx, (data) in enumerate(self.te_data_loader):
+                if self.args.data_name == 'Samsung':
+                    img_info, noisy1,noisy2, clean = data
+                else :
+                    noisy1,noisy2, clean = data
                 start = time.time()
 
                 source = noisy1.cuda()
@@ -238,16 +256,43 @@ class TrainN2N_FBI(object):
                 psnr_arr.append(get_PSNR(X[0], X_hat[0]))
                 ssim_arr.append(get_SSIM(X[0], X_hat[0],self.args.data_type))
                 denoised_img_arr.append(X_hat[0].reshape(X_hat.shape[2],X_hat.shape[3]))
-                if batch_idx % 50 == 49 and self.args.log_off is False:
-                    name_str = f""
+                clean_img_arr.append(clean[0].cpu().numpy())
+                noisy_img_arr.append(noisy1[0].detach().cpu().numpy())
+                if self.args.test is True and batch_idx % sample_pic_len == sample_pic_len-1 :
+                    denoised_img = torch.from_numpy(np.array(denoised_img_arr[-sample_pic_len:]).reshape(sample_pic_len,1,X_hat.shape[2],X_hat.shape[3]))
+                    
+                    clean_test = torch.from_numpy(np.array(clean_img_arr[-sample_pic_len:]))
+                    print(denoised_img.shape,clean_test.shape)
+                    
+                    
+                    denoised_grid = torchvision.utils.make_grid(denoised_img)
+                    print(denoised_grid.shape)
+                    clean_grid = torchvision.utils.make_grid(torch.from_numpy(np.array(clean_img_arr[-sample_pic_len:])))
+                    noisy_grid = torchvision.utils.make_grid(torch.from_numpy(np.array(noisy_img_arr[-sample_pic_len:])))
+                    
+                    denoised_img = wandb.Image(denoised_grid, caption = f'EPOCH : {epoch} Batch : {batch_idx}\nPSNR : {np.mean(psnr_arr[-sample_pic_len:]):.4f}, SSIM : {np.mean(ssim_arr[-sample_pic_len:]):.4f}')
+                    
+                    sys.exit(0)
+                
+                if batch_idx % sample_pic_len == sample_pic_len-1 and self.args.log_off is False:
+                    denoised_grid_preprocess = np.array(denoised_img_arr[-sample_pic_len:]).reshape(sample_pic_len,1,X_hat.shape[2],X_hat.shape[3])
+                    denoised_grid = torchvision.utils.make_grid(torch.from_numpy(denoised_grid_preprocess),padding = 5, normalize=True)
+                    clean_grid = torchvision.utils.make_grid(torch.from_numpy(np.array(clean_img_arr[-sample_pic_len:])))
+                    noisy_grid = torchvision.utils.make_grid(torch.from_numpy(np.array(noisy_img_arr[-sample_pic_len:])))
+                    name_str = f"{batch_idx}th batch"
                     if self.args.data_name == "Samsung":
                         name_str += f"{img_info['img_name'][0]}_{img_info['img_idx'].item()}th_{img_info['pair_idx'].item()}th_pair"
-                    image = wandb.Image(denoised_img_arr[-1], caption = f'EPOCH : {epoch} Batch : {batch_idx}\nPSNR: {psnr_arr[-1]:.4f}, SSIM: {ssim_arr[-1]:.4f}')
-                                
-                    self.args.logger.log({f"eval/denoised_img_{name_str}" : image})
-                    self.args.logger.log({f"eval_{name_str}/loss" : np.mean(loss_arr[-50:])})
-                    self.args.logger.log({f"eval_{name_str}/psnr" : np.mean(psnr_arr[-50:])})
-                    self.args.logger.log({f"eval_{name_str}/ssim" : np.mean(ssim_arr[-50:])}) 
+                        
+                    denoised_img = wandb.Image(denoised_grid, caption = f'EPOCH : {epoch} Batch : {batch_idx}\nPSNR : {np.mean(psnr_arr[-sample_pic_len:]):.4f}, SSIM : {np.mean(ssim_arr[-sample_pic_len:]):.4f}')
+                    clean_img = wandb.Image(clean_grid, caption = f'EPOCH : {epoch} Batch : {batch_idx}')
+                    noisy_img = wandb.Image(noisy_grid, caption = f'EPOCH : {epoch} Batch : {batch_idx}')
+                    self.args.logger.log({f"eval/denoised_img_{name_str}" : denoised_img})
+                    self.args.logger.log({f"eval/clean_img_{name_str}" : clean_img})
+                    self.args.logger.log({f"eval/noisy_img_{name_str}" : noisy_img})
+                    
+                    self.args.logger.log({f"eval_metric/{name_str}/loss" : np.mean(loss_arr[-sample_pic_len:])})
+                    self.args.logger.log({f"eval_metric/{name_str}/psnr" : np.mean(psnr_arr[-sample_pic_len:])})
+                    self.args.logger.log({f"eval_metric/{name_str}/ssim" : np.mean(ssim_arr[-sample_pic_len:])}) 
                     # self.args.logger.log({f"eval/inference_time" : np.mean(time_arr[-100:])})
                 # time_arr.append(inference_time)
 
@@ -342,7 +387,7 @@ class TrainN2N_FBI(object):
                 self.logger.log(losses = {'loss': loss}, lr = self.optim.param_groups[0]['lr'])
 
                 tr_loss.append(loss.detach().cpu().numpy())
-                if self.args.test is True:
+                if batch_idx >= 10 and self.args.test is True:
                     break
             mean_tr_loss = np.mean(tr_loss)
             
