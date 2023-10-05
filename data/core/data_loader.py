@@ -63,6 +63,10 @@ def load_single_image(set_num : int, f_num : int, num : int, do_crop=False):
     return image
 # whole_images = load_whole_image(data_path)
 def sem_generator(data_path : str):
+    """
+        get path & return data
+        return : set_num, f_num, image_num, image_array
+    """
     for set_num in sorted(os.listdir(data_path)):
         set_path = os.path.join(data_path,set_num)
         cnt = 0

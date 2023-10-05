@@ -1,7 +1,7 @@
 import argparse
 
 
-def get_args():
+def get_args(env=None):
     parser = argparse.ArgumentParser(description='Denoising')
     # Arguments
     parser.add_argument('--date', type=str, default='', help='(default=%(default)s)')
@@ -9,10 +9,10 @@ def get_args():
     parser.add_argument('--noise-type', default='Real', type=str, required=False,
                         choices=['Poisson-Gaussian'],
                         help='(default=%(default)s)')
-    parser.add_argument('--loss-function', default='Estimated_Affine', type=str, required=False,
-                        choices=['MSE', 'N2V', 'MSE_Affine', 'Noise_est', 'EMSE_Affine', 'MSE_Affine_with_tv'],
+    parser.add_argument('--loss-function', default='EMSE_Affine', type=str, required=False,
+                        choices=['MSE', 'N2V', 'MSE_Affine', 'Noise_est', 'EMSE_Affine', 'MSE_with_l1norm_on_gradient'],
                         help='(default=%(default)s)')
-    parser.add_argument('--lambda-val', default=5, type=float, help='(default=%(default)f)')
+    parser.add_argument('--lambda-val', default=0.005, type=float, help='(default=%(default)f)')
     parser.add_argument('--vst-version', default='MSE', type=str, required=False,
                         choices=['MSE', 'MAE'])
     parser.add_argument('--model-type', default='final', type=str, required=False,
@@ -26,6 +26,9 @@ def get_args():
                                  'FBI_Net',
                                  'PGE_Net',
                                  'DBSN',
+                                 'UNet',
+                                 'NAFNet_light',
+                                 'NAFNet',
                                  'FC-AIDE'],
                         help='(default=%(default)s)')
     parser.add_argument('--BSN-type', default='normal-BSN', type=str, required=False,
@@ -44,6 +47,7 @@ def get_args():
                                  'fivek',
                                  'SIDD',
                                  'DND',
+                                 'ALL_FMD',
                                  'CF_FISH',
                                  'CF_MICE',
                                  'TP_MICE',
@@ -53,6 +57,7 @@ def get_args():
     parser.add_argument('--nepochs', default=50, type=int, required=False, help='(default=%(default)d)')
     parser.add_argument('--batch-size', default=4, type=int, required=False, help='(default=%(default)d)')
     parser.add_argument('--lr', default=0.001, type=float, required=False, help='(default=%(default)f)')
+    parser.add_argument('--weight-decay', default=0, type=float, required=False, help='(default=%(default)f)')
     parser.add_argument('--drop-rate', default=0.5, type=float, help='(default=%(default)f)')
     parser.add_argument('--drop-epoch', default=10, type=int, help='(default=%(default)f)')
     parser.add_argument('--crop-size', default=120, type=int, help='(default=%(default)f)')
@@ -68,7 +73,7 @@ def get_args():
                             choices = ["None",'v1', 'v2'],
                             help='Select wholedataset version \
                             v1 : SET01~SET04, v2 : SET05~SET10(default=%(default)f)')
-
+    parser.add_argument('--test-set', type=str, nargs="+", help='To specify test set')
     parser.add_argument('--num-layers', default=8, type=int, help='(default=%(default)f)')
     parser.add_argument('--num-filters', default=64, type=int, help='(default=%(default)f)')
     parser.add_argument('--mul', default=1, type=int, help='(default=%(default)f)')
@@ -85,7 +90,7 @@ def get_args():
     parser.add_argument('--x-f-num', default='F#', type=str, help='For samsung SEM image, set input of f-number 8,16,32,64',
                         choices=['F#', 'F1','F2','F4','F8','F8', 'F01','F02','F04','F08','F16','F32','F64'])
     parser.add_argument('--y-f-num', default='F64', type=str, help='For samsung SEM image, set target of f-number 8,16,32,64',
-                        choices=['F1','F2','F4','F8','F01','F02','F04','F08','F16','F32','F64'])
+                        choices=['F1','F2','F4','F8','F01','F02','F04','F08','F16','F32','F64','F#'])
     parser.add_argument('--integrate-all-set', action='store_true', help='For samsung SEM image, no matter what f-number is, integrate all set')
     parser.add_argument('--individual-noisy-input', action='store_true', help='For samsung SEM image, no matter what f-number is, integrate all set')
     parser.add_argument('--dataset-type', default='train', type=str, help='For samsung SEM image, train dataset or test dataset',
@@ -100,7 +105,14 @@ def get_args():
     parser.add_argument('--apply_median_filter_target',action='store_true', help='apply median_filter to target image')
     parser.add_argument('--train-with-MSEAffine', action='store_true', help='For samsung SEM image, clean image is denoised image with MSE_AFFINE,not F64 image')
     parser.add_argument('--with-originalPGparam', action='store_true', help='For noise estimation, not using PGE-Net, use original PG param(oracle)')
-    args=parser.parse_args()
+    parser.add_argument('--load-ckpt', default=None, type=str, help='(default=%(default)f)')
+    parser.add_argument('--mixed-target', action='store_true', help='For samsung SEM image, mixed target image for F01')
+    parser.add_argument('--y-f-num-type',default='v1', type=str, help='default : v1 (cover whole f over F01), v2 : F02,F04,F08')
+    parser.add_argument('--average-mode', default='mean', type=str, help='(default=%(default)f)', choices=['mean', 'median'])
+    if env == None:
+        args=parser.parse_args()
+    else :
+        args=parser.parse_args([])
     
     return args
 

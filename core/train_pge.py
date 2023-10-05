@@ -5,6 +5,7 @@ import numpy as np
 import scipy.io as sio
 import torchvision.transforms.functional as tvF
 import scipy.interpolate as sip
+import wandb
 from .utils import TrdataLoader, TedataLoader, get_PSNR, get_SSIM, chen_estimate, gat
 # from .loss_functions import *
 from .logger import Logger
@@ -54,6 +55,15 @@ class Train_PGE(object):
     def eval(self):
         """Evaluates denoiser on validation set."""        
         
+        name_sequence = []
+        if self.args.data_name == "Samsung":
+            for i in range(1,11):
+                set_num = f"SET{i:02d}_"
+                if i < 5:
+                    f_num_list = map(lambda x : f"{set_num}{x}",['F08', 'F16', 'F32'])
+                else :
+                    f_num_list = map(lambda x : f"{set_num}{x}",['F01', 'F02', 'F04', 'F08', 'F16', 'F32'])
+                name_sequence += f_num_list
         loss_arr = []
         a_arr=[]
         b_arr=[]
@@ -78,16 +88,24 @@ class Train_PGE(object):
                 loss=self._vst(transformed_with_pge,self.args.vst_version)
                 estimated_gaussian_noise_level = chen_estimate(transformed_with_pge)
                 
-                loss_arr.append(loss)
-                a_arr.append(predict_alpha)
-                b_arr.append(predict_sigma)
-                estimated_gaussian_noise_level_arr.append(estimated_gaussian_noise_level)
+                loss_arr.append(loss.item())
+                a_arr.append(predict_alpha.item())
+                b_arr.append(predict_sigma.item())
+                estimated_gaussian_noise_level_arr.append(estimated_gaussian_noise_level.item())
 
-                if batch_idx == 0: #and self.args.test is True:
+                if batch_idx % 50 == 0 and self.args.log_off is False:
+                    name_str = f""
+                    if self.args.data_name == "Samsung":
+                        name_str += f"{name_sequence[batch_idx // 50]}"
 
-                    self.args.neptune_logger['images'].append(source,
-                                                            description=f'Batch : {batch_idx} Alpha: {a_arr[-1]:.4f}, Sigma: {b_arr[-1]:.8f}, Estimated Noise Level: {estimated_gaussian_noise_level_arr[-1]:.4f}')
-                    
+                    # self.args.logger.log({'test/source' : wandb.Image(source, 
+                    #     caption=f'Batch : {batch_idx} Alpha: {a_arr[-1]:.4f}, Sigma: {b_arr[-1]:.8f}, \
+                    #         Estimated Noise Level: {estimated_gaussian_noise_level_arr[-1]:.4f}')})
+                if batch_idx % 50 == 49 and self.args.log_off is False:
+                    self.args.logger.log({f"eval_{name_str}/loss" : np.mean(loss_arr[-50:])})
+                    self.args.logger.log({f"eval_{name_str}/alpha" : np.mean(a_arr[-50:])})
+                    self.args.logger.log({f"eval_{name_str}/sigma" : np.mean(b_arr[-50:])}) 
+                    self.args.logger.log({f"eval_{name_str}/estimated_gaussian_noise_level" : np.mean(estimated_gaussian_noise_level_arr[-50:])})
         mean_te_loss = np.mean(loss_arr)
         return mean_te_loss, a_arr,b_arr ,estimated_gaussian_noise_level_arr
     
@@ -96,8 +114,8 @@ class Train_PGE(object):
         self.save_model(epoch)
         mean_te_loss, a_arr, b_arr,estimated_gaussian_noise_level_arr = self.eval()
         self.result_tr_loss_arr.append(mean_tr_loss)
-        sio.savemat('./result_data/'+self.save_file_name +'_result',{'tr_loss_arr':self.result_tr_loss_arr,'a_arr':a_arr, 'b_arr':b_arr,
-                                                    'estimated_gaussian_noise_level_arr' : estimated_gaussian_noise_level_arr})
+        # sio.savemat('./result_data/'+self.save_file_name +'_result',{'tr_loss_arr':self.result_tr_loss_arr,'a_arr':a_arr, 'b_arr':b_arr,
+        #                                             'estimated_gaussian_noise_level_arr' : estimated_gaussian_noise_level_arr})
         # # neptune logger
         # self.args.logger.log({
         #     'mean_tr_loss' : mean_tr_loss,
@@ -105,12 +123,13 @@ class Train_PGE(object):
         #     'alpha' : a_arr,
         #     'sigma' : b_arr
         # })
-        self.args.neptune_logger['mean_tr_loss']= mean_tr_loss
-        self.args.neptune_logger['mean_te_loss']= mean_tr_loss
-        self.args.neptune_logger['alpha'] = a_arr
-        self.args.neptune_logger['sigma'] = b_arr
-        self.args.neptune_logger['estimated_gaussian_noise_level'] = estimated_gaussian_noise_level_arr
-
+        self.args.logger.log({
+                'train/mean_loss'   : mean_tr_loss,
+                'test/mean_loss'    : mean_te_loss,
+                'alpha'         : a_arr,
+                'sigma'         : b_arr,
+                'estimated_gaussian_noise_level' : estimated_gaussian_noise_level_arr
+        })
     def _vst(self,transformed,version='MSE'):    
         
         est=chen_estimate(transformed)
@@ -148,8 +167,11 @@ class Train_PGE(object):
 
                 self.logger.log(losses = {'loss': loss, 'pred_alpha': predict_alpha, 'pred_sigma': predict_sigma}, lr = self.optim.param_groups[0]['lr'])
                 tr_loss.append(loss.detach().cpu().numpy())
+                if self.args.test is True:
+                    break
                 
             mean_tr_loss = np.mean(tr_loss)
+            print("on epoch end")
             self._on_epoch_end(epoch+1, mean_tr_loss)    
             
 

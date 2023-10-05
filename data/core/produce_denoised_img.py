@@ -1,0 +1,1 @@
+../../denoise_and_get_CD/core/produce_denoised_img.py

@@ -20,14 +20,13 @@ torch.backends.cudnn.deterministic = True
 if torch.cuda.is_available():
     torch.cuda.manual_seed(args.seed)
 
-    
 if args.log_off is True:
     args.logger = {}
 else :
     # run_id = f"FBI-Net_semi_BSN_test_BSN_type_{args.BSN_type}_BSN_param_{args.BSN_param}_{args.data_name}_{args.noise_type}_{args.data_type}_alpha_{args.alpha}_beta_{args.beta}_mul_{args.mul}_num_of_layers_{args.num_layers}_output_type_{args.output_type}_sigmoid_value_{args.sigmoid_value}_seed_{args.seed}_date_{args.date}"
     model_type = 'RN2N' if args.x_f_num != args.y_f_num else 'N2N'
     tag_list = [model_type,args.loss_function,args.data_name,f"batch_size_{args.batch_size}"]
-    run_id = f"{model_type}_({args.x_f_num}-{args.y_f_num})_{args.loss_function}"
+    run_id = f"{model_type}_{args.model_type}_({args.x_f_num}-{args.y_f_num})_{args.loss_function}_lr{args.lr}_wd{args.weight_decay}"
     if args.apply_median_filter_target is True:
         run_id += "_apply_median_filter_target"
     if args.loss_function == 'MSE_Affine_with_tv':
@@ -36,7 +35,10 @@ else :
     # run_id = f"FBI-Net_train_with_originalPGparam_{args.with_originalPGparam}_{args.data_name}_{args.noise_type}_{args.data_type}_alpha_{args.alpha}_beta_{args.beta}_mul_{args.mul}_num_of_layers_{args.num_layers}_output_type_{args.output_type}_sigmoid_value_{args.sigmoid_value}_seed_{args.seed}_date_{args.date}"
     if args.data_name == 'Samsung':
         tag_list.append(f"{args.x_f_num}-{args.y_f_num}")
-    args.logger = init_wandb(project_name = "RN2N_variation", run_id = run_id,tag=tag_list)
+        tag_list.append(args.wholedataset_version)
+    project_name = 'None'
+    args.logger = init_wandb(project_name = project_name, run_id = run_id,tag=tag_list)
+
 if __name__ == '__main__':
     """Trains Noise2Noise."""
     save_file_name =""
@@ -120,25 +122,12 @@ if __name__ == '__main__':
 
         args.logger.config.update({'args' : args})
     print ('save_file_name : ', save_file_name)
-    # Initialize model and train
-    # output_folder = './output_log'
-    # os.makedirs(output_folder,exist_ok=True)
-    # f  = None
-    # if args.test is False:
-    #     f = open(f"./{output_folder}/{save_file_name}",'w')
-    # orig_stdout = sys.stdout
-    # orig_stderr = sys.stderr
-    # if args.test is False:
-    #     sys.stderr = f
-    #     sys.stdout = f
+    
     
     if args.model_type != 'PGE_Net':
         train = Train_FBI(_tr_data_dir=tr_data_dir, _te_data_dir=te_data_dir, _save_file_name = save_file_name,  _args = args)
     else:
         train = Train_PGE(_tr_data_dir=tr_data_dir, _te_data_dir=te_data_dir, _save_file_name = save_file_name,  _args = args)
     train.train()
-    # sys.stdout = orig_stdout
-    # sys.stderr = orig_stderr
-    # if args.test is False:
-    #     f.close()   
+    
     print ('Finsh training - save_file_name : ', save_file_name)

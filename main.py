@@ -20,13 +20,12 @@ torch.backends.cudnn.deterministic = True
 if torch.cuda.is_available():
     torch.cuda.manual_seed(args.seed)
 
-    
 if args.log_off is True:
     args.logger = {}
 else :
     # run_id = f"FBI-Net_semi_BSN_test_BSN_type_{args.BSN_type}_BSN_param_{args.BSN_param}_{args.data_name}_{args.noise_type}_{args.data_type}_alpha_{args.alpha}_beta_{args.beta}_mul_{args.mul}_num_of_layers_{args.num_layers}_output_type_{args.output_type}_sigmoid_value_{args.sigmoid_value}_seed_{args.seed}_date_{args.date}"
     tag_list = [args.loss_function,args.data_name,f"batch_size_{args.batch_size}"]
-    run_id = f"{args.data_name}_({args.alpha},{args.sigma})_{args.loss_function}"
+    run_id = f"{args.data_name}_({args.alpha},{args.beta})_{args.loss_function}"
     if args.apply_median_filter_target is True:
         run_id += "_apply_median_filter_target"
     if args.loss_function == 'MSE_Affine_with_tv':

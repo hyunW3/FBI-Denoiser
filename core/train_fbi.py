@@ -7,14 +7,17 @@ import numpy as np
 import scipy.io as sio
 from datetime import date
 from .utils import TedataLoader, TrdataLoader, get_PSNR, get_SSIM, inverse_gat, gat, normalize_after_gat_torch
-from .loss_functions import mse_bias, mse_affine, emse_affine, mse_affine_with_tv
+from .utils_multiple_target import TrdataLoader_multiple_target
+from .loss_functions import mse_bias, mse_affine, emse_affine, MSE_with_l1norm_on_gradient
 from .logger import Logger
 from .models import New_model
 from .fcaide import FC_AIDE
 from .dbsn import DBSN_Model
 from .unet import est_UNet
-
+from .model_UNet import UNet
+from .model_NAFNet import NAFNet
 import time
+import sys
 
 torch.backends.cudnn.benchmark=True
 
@@ -30,7 +33,10 @@ class Train_FBI(object):
             self.te_data_loader = None
             raise ValueError("230414 is not supported")
         else :
-            self.tr_data_loader = TrdataLoader(_tr_data_dir, self.args)
+            if self.args.mixed_target is True:
+                self.tr_data_loader = TrdataLoader_multiple_target(_tr_data_dir, self.args)
+            else :
+                self.tr_data_loader = TrdataLoader(_tr_data_dir, self.args)
             self.tr_data_loader = DataLoader(self.tr_data_loader, batch_size=self.args.batch_size, shuffle=True, num_workers=0, drop_last=True)
             
             self.te_data_loader = TedataLoader(_te_data_dir, self.args)
@@ -79,9 +85,9 @@ class Train_FBI(object):
                     param.requires_grad = False
             
             self.args.output_type = "sigmoid"
-        elif self.args.loss_function == 'MSE_Affine_with_tv':
-            self.loss = mse_affine_with_tv
-            num_output_channel = 2
+        elif self.args.loss_function == 'MSE_with_l1norm_on_gradient':
+            self.loss = MSE_with_l1norm_on_gradient
+            num_output_channel = 1
             self.args.output_type = "linear"
 
         if self.args.model_type == 'FC-AIDE':
@@ -97,26 +103,42 @@ class Train_FBI(object):
                             br2_block_num = 8,
                             br2_blindspot_conv_ks = 5,
                             activate_fun = 'Relu')
+        elif self.args.model_type == 'UNet':
+            self.model = UNet(dim = 1, output_channel = num_output_channel, ngf_factor = 12, depth = 4)
+        elif self.args.model_type == 'NAFNet':
+            self.model =  NAFNet(img_channel=1,output_channel= num_output_channel, width=32, middle_blk_num=12,
+                      enc_blk_nums=[2,2,4,8], dec_blk_nums=[2,2,2,2])
+        elif self.args.model_type == 'NAFNet_light':
+            self.model =  NAFNet(img_channel=1,output_channel= num_output_channel,width=8, middle_blk_num=4,
+                      enc_blk_nums=[2,2,4,4], dec_blk_nums=[2,2,2,2]) # 809257
         else:
             self.model = New_model(channel = 1, output_channel =  num_output_channel, 
                                 filters = self.args.num_filters, num_of_layers=self.args.num_layers, case = self.args.model_type, 
-                                BSN_type = {"type" : self.args.BSN_type, "param" : self.args.BSN_param},
+                                # BSN_type = {"type" : self.args.BSN_type, "param" : self.args.BSN_param},
                                 output_type = self.args.output_type, sigmoid_value = self.args.sigmoid_value)
-            
+        if self.args.load_ckpt is not None:
+            model_weight = torch.load(self.args.load_ckpt)
+            self.model.load_state_dict(model_weight)
         self.model = self.model.cuda()
-        if self.args.log_off is False :
-            self.args.logger.watch(self.model)
+        # if self.args.log_off is False :
+        #     self.args.logger.watch(self.model)
         pytorch_total_params = sum([p.numel() for p in self.model.parameters()])
         print ('num of parameters : ', pytorch_total_params)
-        
-        self.optim = torch.optim.Adam(self.model.parameters(), lr=self.args.lr)
+        if self.args.test is True:
+            z = torch.randn(1,1,256,256).cuda()
+            out = self.model(z)
+            print(out.shape)
+            # sys.exit(0)
+        self.optim = torch.optim.Adam(self.model.parameters(), lr=self.args.lr, weight_decay=self.args.weight_decay)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optim, self.args.drop_epoch, gamma=self.args.drop_rate)
         
     def save_model(self,num_epoch = None):
         if num_epoch is not None:
-            torch.save(self.model.state_dict(), './weights/'+self.save_file_name + '_'+str(num_epoch)+'.w')
+            # torch.save(self.model.state_dict(), './weights/'+self.save_file_name + '_'+str(num_epoch)+'.w')
+            torch.save(self.model.state_dict(), f"./weights/{self.save_file_name}_{num_epoch:02d}.w")
         else :
-            torch.save(self.model.state_dict(), './weights/'+self.save_file_name + '.w')
+            torch.save(self.model.state_dict(), f"./weights/{self.save_file_name}.w")
+            # torch.save(self.model.state_dict(), './weights/'+self.save_file_name + '.w')
         
         return
     
@@ -194,7 +216,7 @@ class Train_FBI(object):
                         loss = self.loss(output, target)
                     else:
                         output = self.model(source)
-                        if self.args.loss_function == 'MSE_Affine_with_tv':
+                        if self.args.loss_function == 'MSE_with_l1norm_on_gradient':
                             loss = self.loss(output, target, self.args.lambda_val)
                         else :
                             loss = self.loss(output, target)
@@ -202,7 +224,7 @@ class Train_FBI(object):
                 loss = loss.cpu().numpy()
                 
                 # Update loss
-                if self.args.loss_function == 'MSE':
+                if self.args.loss_function[:3] == 'MSE':
                     output = output.cpu().numpy()
                     X_hat = np.clip(output, 0, 1)
                     X = target.cpu().numpy()
@@ -238,7 +260,7 @@ class Train_FBI(object):
                 
                 loss_arr.append(loss)
                 psnr_arr.append(get_PSNR(X[0], X_hat[0]))
-                ssim_arr.append(get_SSIM(X[0], X_hat[0],self.args.data_type))
+                ssim_arr.append(get_SSIM(X[0], X_hat[0]))
                 denoised_img_arr.append(X_hat[0].reshape(X_hat.shape[2],X_hat.shape[3]))
                 if batch_idx % 50 == 0 and self.args.log_off is False:
                     name_str = f""
@@ -285,7 +307,7 @@ class Train_FBI(object):
         #if self.args.test is False:
         if self.args.log_off is False:
             self.update_log(epoch,[mean_tr_loss, mean_te_loss, mean_psnr, mean_ssim])
-  
+        return mean_psnr,mean_ssim
     def train(self):
         """Trains denoiser on training set."""
         if self.args.BSN_type == 'prob-BSN':
@@ -329,7 +351,7 @@ class Train_FBI(object):
                     else:
                         output = self.model(source)
                     
-                if self.args.loss_function == 'MSE_Affine_with_tv':
+                if self.args.loss_function == 'MSE_with_l1norm_on_gradient':
                     loss = self.loss(output, target, self.args.lambda_val)
                 else :
                     loss = self.loss(output, target)
@@ -344,7 +366,7 @@ class Train_FBI(object):
                     break
             mean_tr_loss = np.mean(tr_loss)
             
-            self._on_epoch_end(epoch+1, mean_tr_loss)   
+            mean_psnr,mean_ssim = self._on_epoch_end(epoch+1, mean_tr_loss)   
             if self.args.save_whole_model is True:
                 self.save_model(epoch+1)
             elif self.args.nepochs == epoch +1:
@@ -352,6 +374,8 @@ class Train_FBI(object):
                 
             self.scheduler.step()
         self.writer.close()
+        
+        return mean_psnr,mean_ssim
 
 
 

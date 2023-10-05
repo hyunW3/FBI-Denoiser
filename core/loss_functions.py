@@ -50,6 +50,20 @@ def total_variation_loss(img):
      tv_h = torch.pow(img[:,:,1:,:]-img[:,:,:-1,:], 2).sum()
      tv_w = torch.pow(img[:,:,:,1:]-img[:,:,:,:-1], 2).sum()
      return (tv_h+tv_w)/(bs_img*c_img*h_img*w_img)
+
+def MSE_with_l1norm_on_gradient(output, target,lambda_val=5):
+    
+    b = output[:,0]
+    Z = target[:,0]
+    
+    # E[(X - b)**2]
+    loss = torch.mean((b - Z)**2)
+    regularizer = torch.mean(torch.abs(b[:,:,1:]-b[:,:,:-1])) + torch.mean(torch.abs(b[:,1:,:]-b[:,:-1,:]))
+    # print(loss, lambda_val *regularizer)
+    loss = loss + lambda_val*regularizer
+    
+    return loss
+
 def mse_affine_with_tv(output,target,lambda_val=5):
     # print(output.shape, target.shape)
     a = output[:,0]

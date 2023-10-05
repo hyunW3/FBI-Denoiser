@@ -1,4 +1,4 @@
-import sys
+import sys,os
 import random
 import time
 import datetime
@@ -15,70 +15,91 @@ import torch
 from torch.autograd import Variable
 import math
 #from skimage import measure # measure.compare_ssim is deprecated after 0.19
-from sklearn.metrics import mean_squared_error
-from sklearn.feature_extraction import image
 import sys
 import matplotlib.pyplot as plt
 from copy import deepcopy
-from scipy.ndimage import median_filter
 from skimage.metrics import *
 from skimage.metrics import peak_signal_noise_ratio as compare_psnr
 from skimage.metrics import structural_similarity as compare_ssim
-from .median_filter import apply_median_filter_gpu_simple_keep_gpu
 
 class TrdataLoader():
 
     def __init__(self, _tr_data_dir=None, _args = None):
-
+        # print(sys.path)
+        os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         self.tr_data_dir = _tr_data_dir
         self.args = _args
         self.data = h5py.File(self.tr_data_dir, "r")
         self.noisy_arr, self.clean_arr = None, None
-        
+        if self.args.test_set is not None:
+            self.args.test_set = list(map(int, self.args.test_set))
+        print("test set",self.args.test_set)
         if self.args.integrate_all_set is True:
             if self.args.individual_noisy_input is True:
-                print(self.data.keys())
-                for set_num in self.data.keys():
+                set_num_list = ['SET05','SET06','SET07','SET08','SET09','SET10']
+                img_len = 3600
+                if self.args.wholedataset_version == 'v1' and self.args.x_f_num in ['F08','F16','F32','F64'] : #['F16','F32','F64']:
+                    set_num_list = ['SET01','SET02','SET03','SET04'] + set_num_list
+                    img_len = 2160
+                if self.args.test_set is not None :
+                    total_len = img_len * len(set_num_list)
+                    img_len = total_len // (len(set_num_list) - len(self.args.test_set))
+                # print('tr_data_laoder',img_len,set_num_list)
+                for set_num in set_num_list:
                     set_num_idx = int(set_num[3:])
+                    if self.args.test_set is not None and set_num_idx in self.args.test_set:
+                        continue
                     if set_num_idx >=5 :
                         f_num_list = ['F01','F02','F04','F08','F16','F32','F64']
+                        self.data = h5py.File("./data/train_Samsung_SNU_patches_SET050607080910_divided_by_fnum_setnum.hdf5", "r")
                     else:
                         f_num_list = ['F08','F16','F32','F64']
-                    # print(f_num_list)
+                        self.data = h5py.File("./data/train_Samsung_SNU_patches_SET01020304_divided_by_fnum_setnum.hdf5", "r")
+                    
                     # print(self.args.x_f_num, self.args.y_f_num)
                     if self.args.x_f_num not in f_num_list or self.args.y_f_num not in f_num_list:
                         continue
-                    
+                    if self.args.wholedataset_version == 'v1' and set_num_idx <=4 : # v1
+                        mask = [False] * len(self.data[set_num][self.args.x_f_num]) 
+                        #num_crop_dict = {'F08' : 144, 'F16' : 144*2,  'F32' : 144, 'F64' : 144//3}
+                        num_crop = 144 # num_crop_dict[self.args.x_f_num]
+                        image_step = 480
+                        mask = [False] * len(self.data[set_num][self.args.x_f_num]) # 7200
+                        for idx in range(0,len(mask),image_step):
+                            # print(idx)
+                            mask[idx:idx+num_crop] = [True] * num_crop
+                    else : # self.args.wholedataset_version == 'v2'
+                        mask = [False] * len(self.data[set_num][self.args.x_f_num]) # 7200
+                        mask[:img_len] = [True] * img_len    
                     if self.noisy_arr is None:
-                        self.noisy_arr = self.data[set_num][f'{self.args.x_f_num}'][:3600]
-                        self.clean_arr = self.data[set_num][f'{self.args.y_f_num}'][:3600]
+                        self.noisy_arr = self.data[set_num][f'{self.args.x_f_num}'][mask]
+                        self.clean_arr = self.data[set_num][f'{self.args.y_f_num}'][mask]
                     else:
-                        self.noisy_arr = np.concatenate((self.noisy_arr,self.data[set_num][f'{self.args.x_f_num}'][:3600]),axis=0)
-                        self.clean_arr = np.concatenate((self.clean_arr,self.data[set_num][f'{self.args.y_f_num}'][:3600]),axis=0)
+                        self.noisy_arr = np.concatenate((self.noisy_arr,self.data[set_num][f'{self.args.x_f_num}'][mask]),axis=0)
+                        self.clean_arr = np.concatenate((self.clean_arr,self.data[set_num][f'{self.args.y_f_num}'][mask]),axis=0)
                         
                     print(f'===Tr loader {set_num} {self.args.x_f_num} vs {self.args.y_f_num}===')
                     print(f'{self.noisy_arr.shape[0]}/{self.clean_arr.shape[0]}  images are loaded')
-            else :
+                    if self.args.test is True:
+                        break
+            else : # not individual noisy input
                 # noisy_f_num_list = ['F01','F02','F04','F08','F16','F32']
                 # adjust the number of images for each set
                 mask = None
                 set_num_list = ['SET05','SET06','SET07','SET08','SET09','SET10']
                 data_dict = h5py.File("./data/train_Samsung_SNU_patches_SET01020304_divided_by_fnum_setnum.hdf5", "r")
                 # print(data_dict)
-                if self.args.wholedataset_version == 'v1' and self.args.y_f_num in ['F16','F32','F64']:
+                if self.args.wholedataset_version == 'v1' and self.args.x_f_num in ['F08','F16','F32','F64'] : 
                     # take 2400 patches for fnum
                     set_num_list = ['SET01','SET02','SET03','SET04'] + set_num_list
-                    mask_len_dict = {'F16': 540, 'F32' : 2160//5, 'F64' : 2160//6} 
+                    mask_len_dict = {'F08' : 2160//3., 'F16': 2160//4, 'F32' : 2160//5, 'F64' : 2160//6} 
                     # TODO : option for F32,F64 -> 2160 / number of fnum
                      #{'F16' : 540, 'F08' : 1200, 'F04' : 1800, 'F02' : 3600} 
                     mask_len = mask_len_dict[self.args.y_f_num]
                     mask_v1 = [False] * len(data_dict['SET01']['F08']) # 7200
                     image_step = 480
-                    num_crop = 144 #mask_len//15
-                    if self.args.y_f_num == 'F32':
-                        num_crop = num_crop // 2
-                    elif self.args.y_f_num == 'F64':
-                        num_crop = num_crop // 3
+                    num_crop_dict = {'F08' : 144, 'F16' : 144,  'F32' : 144//2, 'F64' : 144//3}
+                    num_crop = num_crop_dict[self.args.y_f_num]
                     for idx in range(0,len(mask_v1),image_step):
                         # print(idx)
                         mask_v1[idx:idx+num_crop] = [True] * num_crop
@@ -104,6 +125,7 @@ class TrdataLoader():
                     else: # SET1~4
                         noisy_f_num_list = ['F08','F16','F32']
                         mask = mask_v1
+                    print(noisy_f_num_list)
                     for noisy_f_num in noisy_f_num_list:    
                         if noisy_f_num == self.args.y_f_num:
                             break
@@ -117,8 +139,10 @@ class TrdataLoader():
                             self.clean_arr = np.concatenate((self.clean_arr,data_dict[set_num][self.args.y_f_num][mask]),axis=0)
                         print('===Tr loader ',set_num, noisy_f_num,'===')
                         print(f'{self.noisy_arr.shape[0]}/{self.clean_arr.shape[0]}  images are loaded')    
+                        
                     if noisy_f_num == self.args.y_f_num:
                         continue
+                    
                     
                     
         else:
@@ -129,7 +153,10 @@ class TrdataLoader():
         print("clean_arr : ",self.clean_arr.shape, f"pixel value range from {self.clean_arr[-1].min()} ~ {self.clean_arr[-1].max()}")
 
         self.num_data = self.clean_arr.shape[0]
-        print ('num of training patches : ', self.num_data)
+        print ('num of training atches : ', self.num_data)
+        
+        # if self.args.test is True:
+        #     sys.exit(0)
     def __len__(self):
         return self.num_data
     
@@ -178,7 +205,7 @@ class TrdataLoader():
 
             
 
-            if self.args.loss_function == 'MSE':
+            if self.args.loss_function[:3] == 'MSE':
             
                 source = torch.from_numpy(noisy_patch.copy())
                 target = torch.from_numpy(clean_patch.copy())
@@ -189,9 +216,7 @@ class TrdataLoader():
                 target = torch.from_numpy(clean_patch.copy())
                 
                 target = torch.cat([source,target], dim = 0) # (512,256) -> (2,256,256)
-            if self.args.apply_median_filter_target:
-                # source = apply_median_filter_gpu_simple_keep_gpu(source)
-                target = apply_median_filter_gpu_simple_keep_gpu(target)
+            
             return source, target
 
         else: ## real data
@@ -235,28 +260,24 @@ class TedataLoader():
                     #set_num = f"SET{set_num_idx:02d}"
                 for set_num in self.data.keys():
                     set_num_idx = int(set_num[3:])
+                    if self.args.test_set is not None and set_num_idx not in self.args.test_set:
+                        continue
                     
-                    if set_num_idx >=5 :
-                        noisy_f_num_list = ['F01','F02','F04','F08','F16','F32']
+                    noisy_f_num = self.args.x_f_num
+                        
+                    if self.noisy_arr is None:
+                        # self.noisy_arr = self.data[set_num][f'{self.args.x_f_num}']
+                        self.noisy_arr = self.data[set_num][f'{noisy_f_num}'][:img_len]
+                        self.clean_arr = self.data[set_num][f'F64'][:img_len]
                     else:
-                        noisy_f_num_list = ['F08','F16','F32']
-                    
-                    if self.args.test_wholedataset is True:
-                        
-                        for noisy_f_num in noisy_f_num_list:   
-                            if self.noisy_arr is None:
-                                # self.noisy_arr = self.data[set_num][f'{self.args.x_f_num}']
-                                self.noisy_arr = self.data[set_num][f'{noisy_f_num}'][:img_len]
-                                self.clean_arr = self.data[set_num][f'F64'][:img_len]
-                            else:
-                                # self.noisy_arr = np.concatenate((self.noisy_arr,self.data[set_num][f'{self.args.x_f_num}']),axis=0)
-                                self.noisy_arr = np.concatenate((self.noisy_arr,self.data[set_num][f'{noisy_f_num}'][:img_len]),axis=0)
-                                self.clean_arr = np.concatenate((self.clean_arr,self.data[set_num][f'F64'][:img_len]),axis=0)
+                        # self.noisy_arr = np.concatenate((self.noisy_arr,self.data[set_num][f'{self.args.x_f_num}']),axis=0)
+                        self.noisy_arr = np.concatenate((self.noisy_arr,self.data[set_num][f'{noisy_f_num}'][:img_len]),axis=0)
+                        self.clean_arr = np.concatenate((self.clean_arr,self.data[set_num][f'F64'][:img_len]),axis=0)
                             
-                        print(f'===Te loader {set_num} {noisy_f_num_list}  train on {self.args.x_f_num} vs {self.args.y_f_num}===')
+                    print(f'===Te loader {set_num} {noisy_f_num_list}  train on {self.args.x_f_num} vs {self.args.y_f_num}===')
                         
-                    print(f'{self.noisy_arr.shape[0]}/{self.clean_arr.shape[0]}  images are loaded')
-            elif self.args.test_wholedataset is False: # self.args.individual_noisy_input is False:
+                print(f'{self.noisy_arr.shape[0]}/{self.clean_arr.shape[0]}  images are loaded')
+            elif self.args.test_wholedataset is False: 
                 #for set_num_idx in range(1,10+1):
                     #set_num = f"SET{set_num_idx:02d}"
                 for set_num in self.data.keys():
@@ -275,6 +296,14 @@ class TedataLoader():
                                 self.noisy_arr = np.concatenate((self.noisy_arr,self.data[set_num][noisy_f_num][:img_len]),axis=0)
                                 self.clean_arr = np.concatenate((self.clean_arr,self.data[set_num]['F64'][:img_len]),axis=0)
                         print(f'===Te loader {set_num} {noisy_f_num_list}===')
+                    else :
+                        if self.noisy_arr is None:
+                            self.noisy_arr = self.data[set_num][self.args.x_f_num][:img_len]
+                            self.clean_arr = self.data[set_num]['F64'][:img_len]
+                        else:
+                            self.noisy_arr = np.concatenate((self.noisy_arr,self.data[set_num][self.args.x_f_num][:img_len]),axis=0)
+                            self.clean_arr = np.concatenate((self.clean_arr,self.data[set_num]['F64'][:img_len]),axis=0)
+                        print(f'===Te loader {set_num} {self.args.x_f_num}===')   
 
                     print(f'{self.noisy_arr.shape[0]}/{self.clean_arr.shape[0]}  images are loaded')
             else : #if self.args.test_wholedataset is True:
@@ -302,12 +331,15 @@ class TedataLoader():
                             self.clean_arr = np.concatenate((self.clean_arr, data_dict[set_num]['F64'][:img_len]),axis=0)
                     print(f'===Te loader {set_num} {noisy_f_num_list}===')
                     print(f'{self.noisy_arr.shape[0]}/{self.clean_arr.shape[0]}  images are loaded')
+                    if self.args.test is True:
+                        break
         else:
             self.clean_arr = self.data["clean_images"]
             self.noisy_arr = self.data["noisy_images"]
         self.num_data = self.noisy_arr.shape[0]
         
         print ('num of test images : ', self.num_data)
+
     def __len__(self):
         return self.num_data
     
@@ -327,19 +359,24 @@ class TedataLoader():
         if self.args.loss_function[:10] == 'MSE_Affine' or self.args.loss_function == 'N2V':
             target = torch.cat([source,target], dim = 0)
 
-        if self.args.apply_median_filter_target:
-            # source = apply_median_filter_gpu_simple_keep_gpu(source)
-            target = apply_median_filter_gpu_simple_keep_gpu(target)
         return source, target
     
 def get_PSNR(X, X_hat):
+    if type(X) == torch.Tensor:
+        X = X.cpu().numpy()
+    if type(X_hat) == torch.Tensor:
+        X_hat = X_hat.cpu().numpy()
 
     mse = np.mean((X-X_hat)**2)
     test_PSNR = 10 * math.log10(1/mse)
     
     return test_PSNR
 
-def get_SSIM(X, X_hat,data_type):
+def get_SSIM(X, X_hat):
+    if type(X) == torch.Tensor:
+        X = X.cpu().numpy()
+    if type(X_hat) == torch.Tensor:
+        X_hat = X_hat.cpu().numpy()
     
     ch_axis = 0
     #test_SSIM = measure.compare_ssim(np.transpose(X, (1,2,0)), np.transpose(X_hat, (1,2,0)), data_range=X.max() - X.min(), multichannel=multichannel)

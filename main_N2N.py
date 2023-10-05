@@ -1,6 +1,6 @@
 from core.train_fbi import Train_FBI
 from core.train_fbi_N2N import TrainN2N_FBI
-from core.train_pge import Train_PGE
+from core.train_pge_N2N import TrainN2N_PGE
 from arguments import get_args
 import os,sys
 import torch
@@ -27,20 +27,23 @@ if args.log_off is True:
 else :
     # run_id = f"FBI-Net_semi_BSN_test_BSN_type_{args.BSN_type}_BSN_param_{args.BSN_param}_{args.data_name}_{args.noise_type}_{args.data_type}_alpha_{args.alpha}_beta_{args.beta}_mul_{args.mul}_num_of_layers_{args.num_layers}_output_type_{args.output_type}_sigmoid_value_{args.sigmoid_value}_seed_{args.seed}_date_{args.date}"
     model_type = 'RN2N' if args.x_f_num != args.y_f_num else 'N2N'
-    tag_list = [model_type,args.loss_function,args.data_name,f"batch_size_{args.batch_size}"]
+    tag_list = [model_type,args.loss_function,args.data_name,f"batch_size_{args.batch_size}", f"img-{args.average_mode}"]
     run_id = f"{model_type}_({args.x_f_num}-{args.y_f_num})_{args.loss_function}"
 
     if args.loss_function == 'MSE_Affine_with_tv':
         run_id += f'TV_{args.lambda_val}'
         tag_list.append(f"TV_{args.lambda_val}")
     # run_id = f"FBI-Net_train_with_originalPGparam_{args.with_originalPGparam}_{args.data_name}_{args.noise_type}_{args.data_type}_alpha_{args.alpha}_beta_{args.beta}_mul_{args.mul}_num_of_layers_{args.num_layers}_output_type_{args.output_type}_sigmoid_value_{args.sigmoid_value}_seed_{args.seed}_date_{args.date}"
-    if args.data_name == 'Samsung':
-        project_name = 'N2N_RN2N'
-    else :
-        project_name = f'N2N_RN2N_{args.data_type}_{args.data_name}'
+    # if args.data_name == 'Samsung':
+    #     project_name = 'N2N_RN2N'
+    # else :
+        # project_name = f'N2N_RN2N_{args.data_type}_{args.data_name}'
+    project_name = 'on N2N settings'
     tag_list.append(f"{args.x_f_num}-{args.y_f_num}")
 
     args.logger = init_wandb(project_name = project_name, run_id = run_id,tag=tag_list)
+    
+
 if __name__ == '__main__':
     """Trains Noise2Noise."""
     save_file_name =""
@@ -48,11 +51,14 @@ if __name__ == '__main__':
     # load dataloader
     if args.data_name == 'Samsung':
         tr_data_dir = f"./data/train_Samsung_SNU_patches_230414.hdf5"
-        te_data_dir = f'./data/test_Samsung_SNU_patches_230414.hdf5'
-    elif args.data_type == 'FMD' and args.data_name in ['CF_FISH', 'CF_MICE','TP_MICE']:
+        # te_data_dir = f'./data/test_Samsung_SNU_patches_230414.hdf5'
+        te_data_dir = f'./data/test_Samsung_SNU_patches_SET050607080910_divided_by_fnum_setnum.hdf5'
+        args.integrate_all_set = True
+        args.test_wholedataset = False
+    elif args.data_type == 'FMD' and args.data_name in ['ALL_FMD','CF_FISH', 'CF_MICE','TP_MICE']:
         tr_data_dir = f"/mnt/ssd/hyun/datasets/FMD_dataset"
         te_data_dir = f'/mnt/ssd/hyun/datasets/FMD_dataset'
-    save_file_name = f"{args.date}_{args.model_type}_{args.data_type}_N2N_{args.x_f_num}-{args.y_f_num}_{args.data_name}"
+    save_file_name = f"{args.date}_{args.model_type}_{args.loss_function}_{args.data_type}_N2N_{args.x_f_num}-{args.y_f_num}_{args.data_name}_img-{args.average_mode}"
     
     
     if args.loss_function == 'MSE_Affine_with_tv':
@@ -81,10 +87,7 @@ if __name__ == '__main__':
     if args.model_type != 'PGE_Net':
         train = TrainN2N_FBI(_tr_data_dir=tr_data_dir, _te_data_dir=te_data_dir, _save_file_name = save_file_name,  _args = args)
     else:
-        train = Train_PGE(_tr_data_dir=tr_data_dir, _te_data_dir=te_data_dir, _save_file_name = save_file_name,  _args = args)
+        train = TrainN2N_PGE(_tr_data_dir=tr_data_dir, _te_data_dir=te_data_dir, _save_file_name = save_file_name,  _args = args)
     train.train()
-    # sys.stdout = orig_stdout
-    # sys.stderr = orig_stderr
-    # if args.test is False:
-    #     f.close()   
+    
     print ('Finsh training - save_file_name : ', save_file_name)
