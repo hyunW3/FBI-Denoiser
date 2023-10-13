@@ -15,6 +15,7 @@ from core.patch_generate import make_dataset_iterative
 parser = argparse.ArgumentParser()
 parser.add_argument('--test', action='store_true')
 parser.add_argument('--crop-size', type=int, default=256)
+parser.add_argument('--clean-f-num', type=str, default='F64')
 parser.add_argument('--pad', type=int, default=128)
 parser.add_argument('--len-training-patch', type=int, default=21600)
 args = parser.parse_args()
@@ -25,9 +26,9 @@ seed_everything(seed) # Seed 고정
 
 #data_path = "Samsung+SNU+dataset+221115_727x1495"
 # data_path = "../dataset"
-data_path = "/mnt/ssd/hyun/fbi-net/FBI-Denoiser/training_code/dataset"
+data_path = "/mnt/ssd/hyun/fbi-net/FBI-Denoiser/training_code/dataset_1536x3072_aligned"
 
-img_size = (1710,2990)
+img_size = (1536,3072)
 len_training_patch = args.len_training_patch#21600
 
 # read image list & check image length
@@ -45,12 +46,14 @@ for idx in range(len(image_list)-1):
    assert len(f_image_list) == len(f_image_list_next), f"len(f_image_list) != len(f_image_list_next) :\
       {len(f_image_list)} != {len(f_image_list_next)}"
 # calculated num_crop 
-num_crop = int(len_training_patch/image_len)
-print(f"num_crop : {num_crop}, image_len : {image_len}\nexpected training len : {num_crop * image_len}")
+print(f"image_len : {image_len}")
+num_crop = int(len_training_patch/(image_len-1))
+if len_training_patch % (image_len-1) != 0:
+   num_crop += 1
+print(f"num_crop : {num_crop}")
+print(f"expected training len : {num_crop * (image_len-1)}")
 
-   
 
-num_crop= args.num_crop#500
 
 if args.test is True:
    num_crop = 4
@@ -60,7 +63,7 @@ m = mp.Manager()
 write_lock = m.Lock()
 
 make_dataset_iterative(data_path,img_size, write_lock,num_crop=num_crop,crop_size=args.crop_size,
-                       clean_f_num = 'F32',
+                       clean_f_num = args.clean_f_num,pad = args.pad,
                        is_test=args.test)
    
 print("All Complete")

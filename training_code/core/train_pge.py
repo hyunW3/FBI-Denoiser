@@ -11,6 +11,7 @@ from .utils import TrdataLoader, TedataLoader, get_PSNR, get_SSIM, chen_estimate
 import torchvision as vision
 import sys
 from .unet import est_UNet  
+from .logger import Logger
 import time
 import sys, os
 

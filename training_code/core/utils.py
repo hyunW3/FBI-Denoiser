@@ -33,7 +33,7 @@ class TrdataLoader():
         self.noisy_arr, self.clean_arr = None, None
         
         self.noisy_arr = self.data[self.args.x_f_num]
-        self.clean_arr = self.data[self.args.x_f_num]
+        self.clean_arr = self.data[self.args.y_f_num]
         
         print("noisy_arr : ",self.noisy_arr.shape, f"pixel value range from {self.noisy_arr[-1].min()} ~ {self.noisy_arr[-1].max()}")
         print("clean_arr : ",self.clean_arr.shape, f"pixel value range from {self.clean_arr[-1].min()} ~ {self.clean_arr[-1].max()}")
@@ -127,7 +127,7 @@ class TedataLoader():
         self.noisy_arr, self.clean_arr = None, None
         
         self.noisy_arr = self.data[self.args.x_f_num]
-        self.clean_arr = self.data[self.args.x_f_num]
+        self.clean_arr = self.data[self.args.y_f_num]
         self.num_data = self.noisy_arr.shape[0]
         
         print ('num of test images : ', self.num_data)

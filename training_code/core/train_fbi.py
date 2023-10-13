@@ -339,7 +339,7 @@ class Train_FBI(object):
                 self.logger.log(losses = {'loss': loss}, lr = self.optim.param_groups[0]['lr'])
 
                 tr_loss.append(loss.detach().cpu().numpy())
-                if self.args.test is True:
+                if self.args.test is True and batch_idx == 10:
                     break
             mean_tr_loss = np.mean(tr_loss)
             
